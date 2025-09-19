@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Magnetic Fillings — Canvas (Vanilla JS)</title>
+  <style>
+    html,body{height:100%;margin:0}
+    body{
+      background: linear-gradient(180deg,#071028 0%, #04121f 70%);
+      color:#fff;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      overflow:hidden;display:flex;align-items:stretch;}
+    canvas{display:block;position:fixed;inset:0;z-index:0}
+    .panel{
+      position:fixed;right:18px;top:18px;z-index:10;background:rgba(255,255,255,0.04);
+      color:#eef;padding:10px;border-radius:12px;font-size:13px;backdrop-filter:blur(6px);
+      pointer-events:auto; max-width:300px
+    }
+    .panel label{display:flex;align-items:center;gap:8px;margin:6px 0}
+    .panel input[type=range]{width:150px}
+    .hint{font-size:12px;opacity:0.85;margin-top:6px}
+    @media (prefers-reduced-motion: reduce){
+      .hint{display:none}
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="panel" id="panel">
+    <div style="font-weight:600;margin-bottom:6px">Magnetic Fillings — Canvas</div>
+
+    <label>Cell size (px) <input id="cellSize" type="range" min="8" max="120" value="36"></label>
+    <label>Gap (px) <input id="gap" type="range" min="0" max="32" value="0"></label>
+    <label>Line length <input id="lineLength" type="range" min="6" max="400" value="36"></label>
+    <label>Anchor % <input id="anchor" type="range" min="0" max="100" value="50"></label>
+    <label>Range <input id="range" type="range" min="40" max="1200" value="280"></label>
+    <label>Sensitivity <input id="sensitivity" type="range" min="0" max="2" step="0.05" value="0.9"></label>
+    <label>Density cap <input id="cap" type="range" min="500" max="20000" step="100" value="6000"></label>
+
+    <div class="hint">Canvas backend — much faster for high counts. Use the density cap if you hit slowdowns.</div>
+    <div style="margin-top:8px;font-size:12px;opacity:0.9">Tip: press H to hide panel. Touch and mouse supported.</div>
+  </div>
+
+  <script>
+  (function(){
+    // Canvas-based magnetic fillings implementation
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+
+    // Controls
+    const cellSizeInput = document.getElementById('cellSize');
+    const gapInput = document.getElementById('gap');
+    const lineLengthInput = document.getElementById('lineLength');
+    const anchorInput = document.getElementById('anchor');
+    const rangeInput = document.getElementById('range');
+    const sensInput = document.getElementById('sensitivity');
+    const capInput = document.getElementById('cap');
+
+    // State/config
+    let DPR = Math.max(1, window.devicePixelRatio || 1);
+    let CELL = parseInt(cellSizeInput.value,10);
+    let GAP = parseInt(gapInput.value,10);
+    let LINE_LENGTH = parseInt(lineLengthInput.value,10);
+    let ANCHOR = parseInt(anchorInput.value,10)/100; // 0..1
+    let MAX_DIST = parseInt(rangeInput.value,10);
+    let SENS = parseFloat(sensInput.value);
+    let DENSITY_CAP = parseInt(capInput.value,10);
+
+    let cols = 0, rows = 0; // grid dims
+    let positions = []; // array of cell centers [{x,y}]
+
+    // Pointer
+    const pointer = {x: window.innerWidth/2, y: window.innerHeight/2, active:false};
+
+    // Resize canvas to cover viewport with DPR handling
+    function resize(){
+      DPR = Math.max(1, window.devicePixelRatio || 1);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = Math.round(w * DPR);
+      canvas.height = Math.round(h * DPR);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0); // scale drawing to CSS pixels
+      rebuildGrid();
+    }
+
+    // Build grid positions (centers). We'll keep a flat array for speed.
+    function rebuildGrid(){
+      positions.length = 0;
+      cols = Math.ceil(window.innerWidth / (CELL + GAP));
+      rows = Math.ceil(window.innerHeight / (CELL + GAP));
+      const total = cols * rows;
+      // if count exceeds cap, increase effective cell size proportionally
+      if (total > DENSITY_CAP){
+        const factor = Math.sqrt(total / DENSITY_CAP);
+        // enlarge cell size so effective cells ~= cap
+        const newCell = Math.ceil((CELL + GAP) * factor) - GAP;
+        CELL = Math.max(CELL, newCell);
+        // update UI to reflect change (non-destructive)
+        cellSizeInput.value = CELL;
+        cols = Math.ceil(window.innerWidth / (CELL + GAP));
+        rows = Math.ceil(window.innerHeight / (CELL + GAP));
+      }
+
+      // compute centers — offset by half-cell to center
+      const startX = Math.floor((window.innerWidth - (cols*(CELL+GAP) - GAP)) / 2) + CELL/2;
+      const startY = Math.floor((window.innerHeight - (rows*(CELL+GAP) - GAP)) / 2) + CELL/2;
+
+      for(let r=0;r<rows;r++){
+        const y = startY + r*(CELL+GAP);
+        for(let c=0;c<cols;c++){
+          const x = startX + c*(CELL+GAP);
+          positions.push({x,y});
+        }
+      }
+    }
+
+    // Pointer handlers
+    function onPointerMove(x,y){ pointer.x = x; pointer.y = y; pointer.active = true; }
+    window.addEventListener('mousemove', e=> onPointerMove(e.clientX, e.clientY), {passive:true});
+    window.addEventListener('touchmove', e=>{ if(e.touches && e.touches[0]) onPointerMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+    window.addEventListener('touchstart', e=>{ if(e.touches && e.touches[0]) onPointerMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+    window.addEventListener('mouseleave', ()=>{ pointer.x = window.innerWidth/2; pointer.y = window.innerHeight/2; pointer.active = false; });
+
+    // Main draw loop
+    function draw(){
+      const w = canvas.width / DPR;
+      const h = canvas.height / DPR;
+      ctx.clearRect(0,0,w,h);
+
+      // visual background subtle grid fade (optional)
+      // ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(0,0,w,h);
+
+      const mx = pointer.x, my = pointer.y;
+      const invMax = 1 / Math.max(1, MAX_DIST);
+
+      // draw each line
+      const len = positions.length;
+      for(let i=0;i<len;i++){
+        const p = positions[i];
+        const dx = mx - p.x;
+        const dy = my - p.y;
+        const dist = Math.hypot(dx,dy);
+        let strength = 1 - dist * invMax;
+        if (strength <= 0) { // draw baseline faint static lines (optional)
+          // draw minimal neutral line
+          drawLine(p.x, p.y, 0, 0, 0.35);
+          continue;
+        }
+        // sensitivity
+        strength = Math.pow(strength, 1 / Math.max(0.0001, SENS));
+        const angle = Math.atan2(dy,dx);
+        const tx = dx * 0.06 * strength;
+        const ty = dy * 0.02 * strength;
+        const scaleX = 1 + 1.8 * strength;
+        const opacity = 0.4 + 0.6 * Math.min(1, 0.7 + strength);
+
+        drawLine(p.x + tx, p.y + ty, angle, scaleX, opacity);
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    // drawLine: draw a rectangular line with anchor percent ANCHOR (0..1)
+    // cx,cy: center point where anchor should sit
+    // angle: radians
+    // scaleX: multiplier for length
+    // opacity: 0..1
+    function drawLine(cx,cy,angle,scaleX,opacity){
+      const L = LINE_LENGTH * scaleX;
+      const H = 2.0; // thickness
+
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate(angle);
+      // place so that anchor point (distance ANCHOR*L from left end) lies at origin
+      // left end position relative to left = 0, so to draw rect from x= -ANCHOR*L to x= (1-ANCHOR)*L
+      const left = -ANCHOR * L;
+
+      // shadow/glow when active
+      if (opacity > 0.45){
+        ctx.shadowColor = 'rgba(0,120,255,0.12)';
+        ctx.shadowBlur = 6;
+      } else {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+
+      // line gradient
+      const g = ctx.createLinearGradient(left,0,left+L,0);
+      g.addColorStop(0, 'rgba(255,255,255,' + Math.min(1, opacity + 0.1) + ')');
+      g.addColorStop(1, 'rgba(255,255,255,' + Math.max(0.12, opacity - 0.2) + ')');
+
+      ctx.fillStyle = g;
+      ctx.globalAlpha = opacity;
+      ctx.fillRect(left, -H/2, L, H);
+
+      // reset
+      ctx.globalAlpha = 1.0;
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    // initial setup
+    resize();
+    requestAnimationFrame(draw);
+
+    // controls handlers
+    cellSizeInput.addEventListener('input', e=>{ CELL = Math.max(4, parseInt(e.target.value,10)); rebuildGrid(); });
+    gapInput.addEventListener('input', e=>{ GAP = parseInt(e.target.value,10); rebuildGrid(); });
+    lineLengthInput.addEventListener('input', e=>{ LINE_LENGTH = Math.max(2, parseInt(e.target.value,10)); });
+    anchorInput.addEventListener('input', e=>{ ANCHOR = parseInt(e.target.value,10)/100; });
+    rangeInput.addEventListener('input', e=>{ MAX_DIST = Math.max(20, parseInt(e.target.value,10)); });
+    sensInput.addEventListener('input', e=>{ SENS = Math.max(0, parseFloat(e.target.value)); });
+    capInput.addEventListener('input', e=>{ DENSITY_CAP = Math.max(200, parseInt(e.target.value,10)); rebuildGrid(); });
+
+    window.addEventListener('resize', ()=>{ // debounce a bit
+      clearTimeout(window.__magnetic_fillings_resize);
+      window.__magnetic_fillings_resize = setTimeout(resize, 80);
+    });
+
+    // keyboard to hide panel
+    window.addEventListener('keydown', e=>{ if (e.key.toLowerCase()==='h'){ const p = document.getElementById('panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; } });
+
+    // keep canvas crisp when tab visibility changes
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) resize(); });
+
+  })();
+  </script>
+</body>
+</html>
