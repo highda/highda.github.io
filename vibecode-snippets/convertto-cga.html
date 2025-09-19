@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CGA Converter — Full Version</title>
+  <style>
+    body {
+      margin:0; padding:0;
+      font-family: system-ui,Segoe UI,Roboto,Arial;
+      background: #222;
+      color: #eee;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #controls {
+      position: absolute;
+      top:10px; left:10px;
+      background: rgba(0,0,0,0.75);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 100;
+      color: #eee;
+      max-width: 320px;
+      overflow-y: auto;
+      max-height: 90vh;
+    }
+    #controls label { display: block; margin: 8px 0 2px; font-size: 0.9em; }
+    #controls select, #controls input[type=range], #controls button {
+      width: 100%;
+      margin-bottom: 8px;
+    }
+    #fileList {
+      background: #333;
+      border: 1px dashed #555;
+      padding:6px;
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom:8px;
+      color: #ccc;
+    }
+    #fileList .file-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    #fileList button {
+      font-size: 0.8em;
+      margin-left:4px;
+      padding:2px 6px;
+    }
+    #imageContainer {
+      flex:1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #111;
+      overflow: auto;
+    }
+    #output {
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
+      -khtml-user-drag: none;
+      -moz-user-drag: none;
+      -o-user-drag: none;
+      user-drag: none;
+    }
+    .small {
+      font-size: 0.85em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div id="fileList">No files selected</div>
+    <label>Input image(s)</label>
+    <input id="file" type="file" accept="image/*" multiple>
+    <button id="loadExample">Load gradient placeholder</button>
+
+    <label>Factor (downscale)</label>
+    <input id="factor" type="range" min="0.05" max="1" step="0.01" value="0.5">
+    <div class="small">Factor: <span id="factorVal">0.50</span></div>
+
+    <label>Palette</label>
+    <select id="palette">
+      <option value="HighIntensity">HighIntensity</option>
+      <option value="LowIntensity">LowIntensity</option>
+      <option value="RedCGA">RedCGA</option>
+      <option value="CGA16Color">CGA16Color</option>
+    </select>
+
+
+
+    <label>Filter</label>
+    <select id="filter">
+      <option>Point</option>
+      <option>Lanczos</option>
+      <option>Box</option>
+      <option>Cubic</option>
+      <option>Triangle</option>
+      <option>LanczosSharp</option>
+    </select>
+
+    <label>Processing path</label>
+    <select id="path">
+      <option value="FirstDownscale">FirstDownscale (Downscale → Recolor → Upscale)</option>
+      <option value="FirstRecolor">FirstRecolor (Recolor → Downscale → Upscale)</option>
+    </select>
+
+    <button id="convert">Convert (single)</button>
+    <button id="download" disabled>Download result</button>
+    <button id="saveBatch">Save Batch (ZIP)</button>
+    <div class="small" id="status">Initializing...</div>
+    <div class="small" id="batchProgress"></div>
+  </div>
+
+  <div id="imageContainer">
+    <img id="output" alt="Processed output">
+  </div>
+
+  <script type="module">
+    import * as Magick from 'https://cdn.jsdelivr.net/npm/wasm-imagemagick@1.2.8/dist/magickApi.js';
+    // JSZip via cdnjs
+    function loadJSZip() {
+      return new Promise((resolve, reject) => {
+        if (window.JSZip) return resolve(window.JSZip);
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = () => resolve(window.JSZip);
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    const placeholderURL = 'https://upload.wikimedia.org/wikipedia/commons/8/83/LCH_Gradient_Example.png';
+
+    // UI elements
+    const fileInput = document.getElementById('file');
+    const loadExampleBtn = document.getElementById('loadExample');
+    const fileListEl = document.getElementById('fileList');
+    const statusEl = document.getElementById('status');
+    const batchProgressEl = document.getElementById('batchProgress');
+
+    const factorInput = document.getElementById('factor');
+    const factorVal = document.getElementById('factorVal');
+    const paletteSelect = document.getElementById('palette');
+
+    const filterSelect = document.getElementById('filter');
+    const pathSelect = document.getElementById('path');
+
+    const convertBtn = document.getElementById('convert');
+    const downloadBtn = document.getElementById('download');
+    const saveBatchBtn = document.getElementById('saveBatch');
+
+    const outputImg = document.getElementById('output');
+
+    // State
+    let currentFileBuffer = null;
+    let currentFileName = '';
+    let lastOutputBlob = null;
+    let queuedFiles = []; // {name, arrayBuffer}
+    let storedFilter = filterSelect.value; 
+
+    // Debounce helper
+    function debounce(fn, wait = 300) {
+      let timeout = null;
+      return (...args) => {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), wait);
+      }
+    }
+
+    // Sync filter enable & restore
+    function syncFilterEnable() {
+      if (pathSelect.value === 'FirstRecolor') {
+        // store current filter value
+        if (filterSelect.value !== 'Point') {
+          storedFilter = filterSelect.value;
+        }
+        filterSelect.value = 'Point';
+        filterSelect.disabled = true;
+      } else {
+        filterSelect.disabled = false;
+        // restore stored filter value
+        if (storedFilter && storedFilter !== 'Point') {
+          filterSelect.value = storedFilter;
+        }
+      }
+    }
+
+    // Event listeners for params
+    factorInput.addEventListener('input', () => {
+      factorVal.textContent = Number(factorInput.value).toFixed(2);
+    });
+    const liveUpdate = debounce(() => {
+      if (currentFileBuffer) runConversion(false);
+    }, 300);
+
+    [factorInput, paletteSelect, pathSelect].forEach(el => {
+      el.addEventListener('change', () => { syncFilterEnable(); liveUpdate(); });
+      el.addEventListener('input', () => { syncFilterEnable(); liveUpdate(); });
+    });
+    filterSelect.addEventListener('change', () => {
+      if (pathSelect.value !== 'FirstRecolor') {
+        storedFilter = filterSelect.value;
+        liveUpdate();
+      }
+    });
+
+    // File input
+    fileInput.addEventListener('change', async (ev) => {
+      const files = ev.target.files;
+      if (!files || files.length === 0) return;
+      queuedFiles = [];
+      for (let f of files) {
+        const ab = await f.arrayBuffer();
+        queuedFiles.push({name: f.name, arrayBuffer: ab});
+      }
+      // clear file input so count resets
+      fileInput.value = '';
+      renderFileList();
+      const first = queuedFiles[0];
+      if (first) selectFile(first.arrayBuffer, first.name);
+    });
+
+    loadExampleBtn.addEventListener('click', async () => {
+      await loadPlaceholder();
+    });
+
+    async function loadPlaceholder() {
+      try {
+        statusEl.textContent = 'Loading placeholder...';
+        const resp = await fetch(placeholderURL);
+        const ab = await resp.arrayBuffer();
+        queuedFiles = [{name: 'gradient.png', arrayBuffer: ab}];
+        fileInput.value = '';
+        renderFileList();
+        selectFile(ab, 'gradient.png');
+        statusEl.textContent = 'Placeholder loaded';
+        runConversion(false);
+      } catch (err) {
+        console.error('Error loading placeholder', err);
+        statusEl.textContent = 'Error loading placeholder';
+      }
+    }
+
+    function renderFileList() {
+      if (!queuedFiles.length) {
+        fileListEl.innerHTML = 'No files selected';
+        return;
+      }
+      fileListEl.innerHTML = '';
+      queuedFiles.forEach((f, idx) => {
+        const row = document.createElement('div');
+        row.className = 'file-row';
+        const left = document.createElement('div');
+        left.textContent = f.name;
+        const right = document.createElement('div');
+        const previewBtn = document.createElement('button');
+        previewBtn.textContent = 'Preview';
+        previewBtn.onclick = () => selectFile(f.arrayBuffer, f.name);
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.onclick = () => {
+          queuedFiles.splice(idx,1);
+          renderFileList();
+          if (queuedFiles.length === 0) {
+            // re-load placeholder
+            loadPlaceholder();
+          } else if (currentFileName === f.name) {
+            const next = queuedFiles[0];
+            selectFile(next.arrayBuffer, next.name);
+          }
+        };
+        right.appendChild(previewBtn);
+        right.appendChild(removeBtn);
+        row.appendChild(left);
+        row.appendChild(right);
+        fileListEl.appendChild(row);
+      });
+    }
+
+    function selectFile(ab, name) {
+      currentFileBuffer = ab;
+      currentFileName = name;
+      // temporarily show original raw image
+      outputImg.src = URL.createObjectURL(new Blob([ab]));
+      lastOutputBlob = null;
+      downloadBtn.disabled = true;
+      statusEl.textContent = `Selected ${name}`;
+      runConversion(false);
+    }
+
+    async function buildPalettePNG(paletteName) {
+      const palettes = {
+        HighIntensity: [
+          [0,0,0,255],        // #000000 black
+          [85,255,255,255],   // #55FFFF bright cyan
+          [255,85,255,255],   // #FF55FF bright magenta
+          [255,255,255,255]   // #FFFFFF white
+        ],
+        LowIntensity: [
+          [0,0,0,255],        // #000000 black
+          [0,170,170,255],    // #00AAAA cyan
+          [170,0,170,255],    // #AA00AA magenta
+          [170,170,170,255]   // #AAAAAA light gray
+        ],
+        RedCGA: [
+          [0,0,0,255],        // #000000 black
+          [170,0,0,255],      // #AA0000 red
+          [170,85,0,255],     // #AA5500 brown
+          [255,255,255,255]   // #FFFFFF white
+        ],
+        CGA16Color: [
+          [0,0,0,255],        // #000000 black
+          [0,0,170,255],      // #0000AA blue
+          [0,170,0,255],      // #00AA00 green
+          [0,170,170,255],    // #00AAAA cyan
+          [170,0,0,255],      // #AA0000 red
+          [170,0,170,255],    // #AA00AA magenta
+          [170,85,0,255],     // #AA5500 brown
+          [170,170,170,255],  // #AAAAAA light gray
+          [85,85,85,255],     // #555555 dark gray
+          [85,85,255,255],    // #5555FF bright blue
+          [85,255,85,255],    // #55FF55 bright green
+          [85,255,255,255],   // #55FFFF bright cyan
+          [255,85,85,255],    // #FF5555 bright red
+          [255,85,255,255],   // #FF55FF bright magenta
+          [255,255,85,255],   // #FFFF55 yellow
+          [255,255,255,255]   // #FFFFFF white
+        ]
+      };
+      
+      const colors = palettes[paletteName] || palettes.HighIntensity;
+      const canvas = document.createElement('canvas');
+      canvas.width = colors.length;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      const imgd = ctx.createImageData(colors.length, 1);
+      
+      for (let i = 0; i < colors.length; i++) {
+        imgd.data[i*4 + 0] = colors[i][0];
+        imgd.data[i*4 + 1] = colors[i][1];
+        imgd.data[i*4 + 2] = colors[i][2];
+        imgd.data[i*4 + 3] = colors[i][3];
+      }
+      ctx.putImageData(imgd, 0, 0);
+      return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
+    }
+
+    function extractBlob(result) {
+      if (!result) return null;
+      if (result.outputFiles && result.outputFiles.length) {
+        const f = result.outputFiles.find(x => x.name && x.name.toLowerCase().endsWith('.png')) || result.outputFiles[0];
+        if (f) {
+          if (f.blob instanceof Blob) return f.blob;
+          if (f.contents) return new Blob([f.contents], {type:'image/png'});
+          if (f.content) return new Blob([f.content], {type:'image/png'});
+          if (f.data) return new Blob([f.data], {type:'image/png'});
+        }
+      }
+      if (result.processedFiles && result.processedFiles.length) {
+        const f = result.processedFiles[0];
+        if (f) {
+          if (f.blob instanceof Blob) return f.blob;
+          if (f.contents) return new Blob([f.contents], {type:'image/png'});
+          if (f.content) return new Blob([f.content], {type:'image/png'});
+        }
+      }
+      if (Array.isArray(result) && result.length) {
+        const f = result.find(x => x.name && x.name.toLowerCase().endsWith('.png')) || result[0];
+        if (f) {
+          if (f.blob instanceof Blob) return f.blob;
+          if (f.contents) return new Blob([f.contents], {type:'image/png'});
+          if (f.content) return new Blob([f.content], {type:'image/png'});
+        }
+      }
+      return null;
+    }
+
+    function buildCmd(origW, origH, newW, newH, filterVal, pathVal, colorCount) {
+      if (pathVal === 'FirstDownscale') {
+        return [
+          'convert','in.png',
+          '-filter', filterVal,
+          '-resize', `${newW}x${newH}!`,
+          '-remap','palette.png',
+          '-colors', colorCount.toString(),
+          '-filter','Point',
+          '-resize', `${origW}x${origH}!`,
+          'out.png'
+        ];
+      } else {
+        return [
+          'convert','in.png',
+          '-remap','palette.png',
+          '-colors', colorCount.toString(),
+          '-filter', filterVal,
+          '-resize', `${newW}x${newH}!`,
+          '-filter','Point',
+          '-resize', `${origW}x${origH}!`,
+          'out.png'
+        ];
+      }
+    }
+
+    async function runMagick(inArrayBuffer) {
+      const paletteBlob = await buildPalettePNG(paletteSelect.value);
+      const img = new Image();
+      const tmpUrl = URL.createObjectURL(new Blob([inArrayBuffer]));
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = tmpUrl; });
+      const origW = img.naturalWidth || 1, origH = img.naturalHeight || 1;
+      URL.revokeObjectURL(tmpUrl);
+
+      const factor = parseFloat(factorInput.value);
+      const newW = Math.max(1, Math.round(origW * factor));
+      const newH = Math.max(1, Math.round(origH * factor));
+
+      let filterVal = filterSelect.value;
+      if (pathSelect.value === 'FirstRecolor') filterVal = 'Point';
+
+      // Determine color count based on palette
+      const colorCount = paletteSelect.value === 'CGA16Color' ? 16 : 4;
+
+      const cmdArray = buildCmd(origW, origH, newW, newH, filterVal, pathSelect.value, colorCount);
+
+      const u8in = new Uint8Array(inArrayBuffer);
+      const u8pal = new Uint8Array(await paletteBlob.arrayBuffer());
+
+      const inputFiles = [
+        { name: 'in.png', content: u8in, blob: u8in },
+        { name: 'palette.png', content: u8pal, blob: u8pal }
+      ];
+
+      let result;
+      if (typeof Magick.execute === 'function') {
+        const cmdStr = cmdArray.join(' ');
+        result = await Magick.execute({
+          inputFiles: inputFiles.map(f => ({name: f.name, content: f.content})),
+          commands: [cmdStr]
+        });
+      } else if (typeof Magick.Call === 'function') {
+        result = await Magick.Call(inputFiles.map(f => ({name: f.name, blob: f.blob})), cmdArray);
+      } else {
+        throw new Error('No API available');
+      }
+
+      const outBlob = extractBlob(result);
+      if (!outBlob) throw new Error('No output blob');
+      return outBlob;
+    }
+
+    async function runConversion(disableBtns = true) {
+      if (!currentFileBuffer) {
+        statusEl.textContent = 'No file selected';
+        return;
+      }
+      try {
+        if (disableBtns) convertBtn.disabled = true;
+        statusEl.textContent = 'Converting...';
+        const blob = await runMagick(currentFileBuffer);
+        lastOutputBlob = blob;
+        outputImg.src = URL.createObjectURL(blob);
+        downloadBtn.disabled = false;
+        statusEl.textContent = 'Done.';
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Error: ' + (err.message || err);
+      } finally {
+        if (disableBtns) convertBtn.disabled = false;
+      }
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      if (!lastOutputBlob) return;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(lastOutputBlob);
+      a.download = (currentFileName ? currentFileName.replace(/\.[^.]+$/, '') : 'out') + '-cga.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+
+    saveBatchBtn.addEventListener('click', async () => {
+      if (!queuedFiles.length) {
+        statusEl.textContent = 'No files queued for batch';
+        return;
+      }
+      saveBatchBtn.disabled = true;
+      batchProgressEl.textContent = 'Loading JSZip...';
+      const JSZipLib = await loadJSZip();
+      const zip = new JSZipLib();
+      let count = 0;
+      for (let i = 0; i < queuedFiles.length; i++) {
+        const f = queuedFiles[i];
+        batchProgressEl.textContent = `Processing ${i+1}/${queuedFiles.length}: ${f.name}`;
+        try {
+          const outb = await runMagick(f.arrayBuffer);
+          const arr = await outb.arrayBuffer();
+          const nameOut = f.name.replace(/\.[^.]+$/, '') + '-cga.png';
+          zip.file(nameOut, arr);
+          count++;
+        } catch(err) {
+          console.error('Batch error:', f.name, err);
+          zip.file(f.name + '-error.txt', 'Error: ' + (err.message || err));
+        }
+      }
+      batchProgressEl.textContent = 'Generating ZIP...';
+      const content = await zip.generateAsync({ type: 'blob' }, (meta) => {
+        batchProgressEl.textContent = `Zipping: ${Math.round(meta.percent)}%`;
+      });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'cga-batch.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      batchProgressEl.textContent = `Done: ${queuedFiles.length} files.`;
+      saveBatchBtn.disabled = false;
+    });
+
+    // Preview original image when mouse/pointer pressed - fixed drag behavior
+    let isPointerDown = false;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    const dragThreshold = 5; // pixels
+
+    outputImg.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      isPointerDown = true;
+      isDragging = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      
+      // show original immediately
+      if (currentFileBuffer) {
+        outputImg.src = URL.createObjectURL(new Blob([currentFileBuffer]));
+      }
+    });
+
+    outputImg.addEventListener('pointermove', (e) => {
+      if (isPointerDown) {
+        const deltaX = Math.abs(e.clientX - startX);
+        const deltaY = Math.abs(e.clientY - startY);
+        if (deltaX > dragThreshold || deltaY > dragThreshold) {
+          isDragging = true;
+        }
+      }
+    });
+
+    outputImg.addEventListener('pointerup', (e) => {
+      // Only restore CGA image if it wasn't a drag gesture
+      if (isPointerDown && !isDragging && lastOutputBlob) {
+        outputImg.src = URL.createObjectURL(lastOutputBlob);
+      }
+      isPointerDown = false;
+      isDragging = false;
+    });
+
+    outputImg.addEventListener('pointerleave', () => {
+      if (isPointerDown && lastOutputBlob) {
+        outputImg.src = URL.createObjectURL(lastOutputBlob);
+      }
+      isPointerDown = false;
+      isDragging = false;
+    });
+
+    outputImg.addEventListener('pointercancel', () => {
+      if (isPointerDown && lastOutputBlob) {
+        outputImg.src = URL.createObjectURL(lastOutputBlob);
+      }
+      isPointerDown = false;
+      isDragging = false;
+    });
+
+    // Disable context menu on image
+    outputImg.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
+
+    // On page load: auto-load placeholder
+    window.addEventListener('load', () => {
+      loadPlaceholder();
+    });
+
+    // initialize
+    syncFilterEnable();
+  </script>
+</body>
+</html>
