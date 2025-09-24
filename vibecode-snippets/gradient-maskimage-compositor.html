@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Mask-Image Compositor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --secondary: #7209b7;
+    --success: #4cc9f0;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --border: #dee2e6;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4edf9 100%);
+    color: var(--dark);
+    line-height: 1.6;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 1600px;
+    margin: 0 auto;
+    box-shadow: var(--shadow);
+    background: var(--card-bg);
+  }
+
+  /* Header Styles - thin banner at top */
+  header {
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    color: white;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-weight: 600;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  header h1 i {
+    font-size: 1.4rem;
+  }
+
+  /* Main content area with three panels */
+  .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Resizable Controls Panel */
+  #controls {
+    min-width: 350px;
+    max-width: 500px;
+    width: 400px;
+    padding: 1rem;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--light);
+    transition: var(--transition);
+    resize: horizontal;
+    overflow: auto;
+  }
+
+  #controls::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #controls::-webkit-scrollbar-track {
+    background: var(--light-gray);
+  }
+
+  #controls::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+  }
+
+  .section {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section h3 {
+    margin-bottom: 0.75rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.1rem;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  label {
+    font-weight: 600;
+    color: var(--dark);
+    min-width: 100px;
+    font-size: 0.9rem;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    background: var(--light-gray);
+    border-radius: 3px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  select, input[type="text"], input[type="number"] {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    width: 100%;
+    transition: var(--transition);
+  }
+
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+  }
+
+  button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.9rem;
+  }
+
+  button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+
+  button.secondary {
+    background: var(--light-gray);
+    color: var(--dark);
+  }
+
+  button.secondary:hover {
+    background: #d8d8d8;
+  }
+
+  button.danger {
+    background: #e63946;
+  }
+
+  button.danger:hover {
+    background: #d90429;
+  }
+
+  /* Gradient Layers - more compact */
+  .gradient-layer {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: var(--transition);
+  }
+
+  .gradient-layer:hover {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .layer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .point-control {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .point-control:last-child {
+    border-bottom: none;
+  }
+
+  .point-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .point-row input[type="range"] {
+    flex: 1;
+    height: 5px;
+    -webkit-appearance: none;
+    background: var(--light-gray);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .point-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .point-row input[type="number"] {
+    width: 50px;
+    text-align: center;
+    padding: 4px;
+    font-size: 0.9rem;
+  }
+
+  .point-controls-row {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  /* Reorder buttons */
+  .reorder-btn {
+    background: #f0f0f0;
+    color: var(--dark);
+    border: 1px solid var(--border);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 0.8rem;
+  }
+
+  .reorder-btn:hover {
+    background: #e0e0e0;
+  }
+
+  /* Preview Area */
+  #preview {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: var(--light-gray);
+    overflow: hidden;
+    padding: 1.5rem;
+  }
+
+  .preview-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1/1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    resize: both;
+    min-width: 300px;
+    min-height: 300px;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #foreground, #foreground-color {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: center;
+    box-sizing: border-box;
+    object-fit: cover;
+  }
+
+  #foreground-color {
+    background: var(--primary);
+  }
+
+  /* CSS Output */
+  #cssOutput {
+    width: 100%;
+    height: 120px;
+    padding: 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    background: var(--dark);
+    color: #f8f8f2;
+    border-radius: 6px;
+    margin-top: 12px;
+    resize: vertical;
+    border: 1px solid var(--border);
+  }
+
+  /* Small gradient preview */
+  .gradient-preview {
+    width: 100%;
+    height: 20px;
+    border-radius: 4px;
+    margin: 8px 0;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .small-gradient-preview {
+    width: 40px;
+    height: 20px;
+    border-radius: 4px;
+    margin: 0 8px 0 0;
+    border: 1px solid var(--border);
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .point-preview {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin: 0 2px;
+    border: 1px solid var(--border);
+  }
+
+  /* Image upload controls */
+  .image-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .image-controls button {
+    flex: 1;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1100px) {
+    .main-content {
+      flex-direction: column;
+    }
+    
+    #controls {
+      width: 100%;
+      max-height: 45vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      resize: vertical;
+    }
+    
+    #preview {
+      height: 55vh;
+    }
+  }
+
+  @media (max-width: 768px) {
+    #controls {
+      padding: 0.75rem;
+      max-height: 40vh;
+    }
+    
+    .control-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    label {
+      margin-bottom: 5px;
+      font-size: 0.85rem;
+    }
+    
+    .point-control {
+      flex-wrap: wrap;
+    }
+    
+    .point-row {
+      flex-wrap: wrap;
+    }
+    
+    .point-row input[type="number"] {
+      width: 100%;
+      margin-top: 4px;
+    }
+    
+    header h1 {
+      font-size: 1.1rem;
+    }
+    
+    header h1 i {
+      font-size: 1.2rem;
+    }
+    
+    .gradient-preview {
+      width: 100%;
+      height: 20px;
+    }
+    
+    .small-gradient-preview {
+      width: 30px;
+      height: 15px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    header {
+      padding: 0.6rem 1rem;
+    }
+    
+    header h1 {
+      font-size: 1rem;
+    }
+    
+    #controls {
+      padding: 0.5rem;
+    }
+    
+    .section h3 {
+      font-size: 1rem;
+    }
+    
+    button {
+      padding: 6px 10px;
+      font-size: 0.8rem;
+    }
+    
+    #cssOutput {
+      height: 100px;
+      font-size: 12px;
+      padding: 8px;
+    }
+  }
+
+  /* Animation for new layers */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .new-layer {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  /* Prevent layout shifts during updates */
+  .controls-container {
+    position: relative;
+    min-height: 100%;
+  }
+  
+  .controls-content {
+    position: relative;
+  }
+  
+  /* Hide scrollbar when not needed */
+  #controls.no-scrollbar {
+    overflow: hidden;
+  }
+  
+  #controls.no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><i class="fas fa-mask"></i> Mask-Image Compositor</h1>
+    <div class="header-actions">
+      <button id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+    </div>
+  </header>
+  
+  <div class="main-content">
+    <div id="controls" class="no-scrollbar">
+      <div class="controls-container">
+        <div class="controls-content">
+          <div class="section">
+            <h3><i class="fas fa-palette"></i> Background & Foreground</h3>
+            <div class="control-group">
+              <div class="control-row">
+                <label for="bgColor">Background:</label>
+                <input type="color" id="bgColor" value="#f8f9fa">
+              </div>
+              <div class="control-row">
+                <label for="fgColor">Foreground:</label>
+                <input type="color" id="fgColor" value="#4361ee">
+              </div>
+            </div>
+            
+            <div class="image-controls">
+              <button id="imageUploadBtn"><i class="fas fa-upload"></i> Upload Image</button>
+              <button id="colorModeBtn" class="secondary"><i class="fas fa-paint-brush"></i> Use Color</button>
+              <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3><i class="fas fa-layer-group"></i> Mask Layers</h3>
+            <button id="addLayer"><i class="fas fa-plus"></i> Add Gradient Layer</button>
+            <div id="layers"></div>
+          </div>
+          
+          <div class="section">
+            <h3><i class="fas fa-cog"></i> Mask Settings</h3>
+            <div class="control-group">
+              <div class="control-row">
+                <label for="compositeMode">Composite Mode:</label>
+                <select id="compositeMode">
+                  <option value="add">Add</option>
+                  <option value="subtract">Subtract</option>
+                  <option value="intersect">Intersect</option>
+                  <option value="exclude">Exclude</option>
+                </select>
+              </div>
+              
+              <div class="control-row">
+                <label for="maskRepeat">Mask Repeat:</label>
+                <select id="maskRepeat">
+                  <option value="no-repeat">No Repeat</option>
+                  <option value="repeat">Repeat</option>
+                  <option value="repeat-x">Repeat X</option>
+                  <option value="repeat-y">Repeat Y</option>
+                </select>
+              </div>
+              
+              <div class="control-row">
+                <label for="maskPosition">Mask Position:</label>
+                <select id="maskPositionSelect">
+                  <option value="custom">Custom</option>
+                  <option value="center">Center</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                  <option value="top left">Top Left</option>
+                  <option value="top right">Top Right</option>
+                  <option value="bottom left">Bottom Left</option>
+                  <option value="bottom right">Bottom Right</option>
+                </select>
+                <input type="text" id="maskPosition" value="center" style="display:none;">
+              </div>
+              
+              <div class="control-row">
+                <label for="maskSize">Mask Size:</label>
+                <select id="maskSize">
+                  <option value="auto">Auto</option>
+                  <option value="contain">Contain</option>
+                  <option value="cover">Cover</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="text" id="maskSizeValue" value="auto" style="display:none;">
+              </div>
+              
+              <div class="control-row">
+                <label for="maskOrigin">Mask Origin:</label>
+                <select id="maskOrigin">
+                  <option value="border-box">Border Box</option>
+                  <option value="padding-box">Padding Box</option>
+                  <option value="content-box">Content Box</option>
+                </select>
+              </div>
+              
+              <div class="control-row">
+                <label for="maskClip">Mask Clip:</label>
+                <select id="maskClip">
+                  <option value="border-box">Border Box</option>
+                  <option value="padding-box">Padding Box</option>
+                  <option value="content-box">Content Box</option>
+                  <option value="text">Text</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="section">
+            <h3><i class="fas fa-code"></i> Resulting CSS</h3>
+            <textarea id="cssOutput" readonly></textarea>
+            <button id="copyBtn" style="margin-top: 8px; width: 100%;"><i class="fas fa-copy"></i> Copy CSS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="preview">
+      <div class="preview-container">
+        <img id="foreground" src="" alt="Foreground Image" style="display: none;">
+        <div id="foreground-color" style="display: block;">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const bgColorInput = document.getElementById('bgColor');
+const fgColorInput = document.getElementById('fgColor');
+const foreground = document.getElementById('foreground');
+const foregroundColor = document.getElementById('foreground-color');
+const layersContainer = document.getElementById('layers');
+const cssOutput = document.getElementById('cssOutput');
+const compositeModeSelect = document.getElementById('compositeMode');
+const maskRepeatSelect = document.getElementById('maskRepeat');
+const maskPositionSelect = document.getElementById('maskPositionSelect');
+const maskPositionInput = document.getElementById('maskPosition');
+const maskSizeSelect = document.getElementById('maskSize');
+const maskSizeValue = document.getElementById('maskSizeValue');
+const maskOriginSelect = document.getElementById('maskOrigin');
+const maskClipSelect = document.getElementById('maskClip');
+const addLayerBtn = document.getElementById('addLayer');
+const resetBtn = document.getElementById('resetBtn');
+const copyBtn = document.getElementById('copyBtn');
+const imageUploadBtn = document.getElementById('imageUploadBtn');
+const imageUpload = document.getElementById('imageUpload');
+const colorModeBtn = document.getElementById('colorModeBtn');
+
+// Initialize with one layer
+let layers = [
+  { 
+    type: 'linear', 
+    angle: 0,
+    shape: 'ellipse', // for radial gradients
+    size: 'farthest-corner', // for radial gradients
+    centerX: 'center', // for radial and conic gradients
+    centerY: 'center', // for radial and conic gradients
+    points: [
+      {color: '#000000', pos: 0, alpha: 1},
+      {color: '#000000', pos: 100, alpha: 0}
+    ]
+  }
+];
+
+// State for image vs color mode
+let isImageMode = false;
+
+// Event Listeners
+bgColorInput.addEventListener('input', () => {
+  document.getElementById('preview').style.backgroundColor = bgColorInput.value;
+});
+
+fgColorInput.addEventListener('input', () => {
+  if (!isImageMode) {
+    foregroundColor.style.backgroundColor = fgColorInput.value;
+  }
+});
+
+compositeModeSelect.addEventListener('change', updateMask);
+maskRepeatSelect.addEventListener('change', updateMask);
+maskOriginSelect.addEventListener('change', updateMask);
+maskClipSelect.addEventListener('change', updateMask);
+
+// Handle mask position dropdown
+maskPositionSelect.addEventListener('change', () => {
+  if (maskPositionSelect.value === 'custom') {
+    maskPositionInput.style.display = 'block';
+  } else {
+    maskPositionInput.style.display = 'none';
+    maskPositionInput.value = maskPositionSelect.value;
+  }
+  updateMask();
+});
+
+maskPositionInput.addEventListener('input', updateMask);
+
+// Handle mask size dropdown
+maskSizeSelect.addEventListener('change', () => {
+  if (maskSizeSelect.value === 'custom') {
+    maskSizeValue.style.display = 'block';
+  } else {
+    maskSizeValue.style.display = 'none';
+    maskSizeValue.value = maskSizeSelect.value;
+  }
+  updateMask();
+});
+
+maskSizeValue.addEventListener('input', updateMask);
+
+addLayerBtn.addEventListener('click', () => {
+  layers.push({ 
+    type: 'linear', 
+    angle: 0,
+    shape: 'ellipse', // for radial gradients
+    size: 'farthest-corner', // for radial gradients
+    centerX: 'center', // for radial and conic gradients
+    centerY: 'center', // for radial and conic gradients
+    points: [
+      {color: '#000000', pos: 0, alpha: 1},
+      {color: '#000000', pos: 100, alpha: 0}
+    ]
+  });
+  renderLayers();
+  updateMask();
+});
+
+resetBtn.addEventListener('click', () => {
+  if (confirm('Reset all settings to default?')) {
+    // Reset colors
+    bgColorInput.value = '#f8f9fa';
+    fgColorInput.value = '#4361ee';
+    document.getElementById('preview').style.backgroundColor = bgColorInput.value;
+    foregroundColor.style.backgroundColor = fgColorInput.value;
+    
+    // Reset mask settings
+    compositeModeSelect.value = 'add';
+    maskRepeatSelect.value = 'no-repeat';
+    maskPositionSelect.value = 'center';
+    maskPositionInput.style.display = 'none';
+    maskPositionInput.value = 'center';
+    maskSizeSelect.value = 'auto';
+    maskSizeValue.style.display = 'none';
+    maskSizeValue.value = 'auto';
+    maskOriginSelect.value = 'border-box';
+    maskClipSelect.value = 'border-box';
+    
+    // Reset layers
+    layers = [
+      { 
+        type: 'linear', 
+        angle: 0,
+        shape: 'ellipse', // for radial gradients
+        size: 'farthest-corner', // for radial gradients
+        centerX: 'center', // for radial and conic gradients
+        centerY: 'center', // for radial and conic gradients
+        points: [
+          {color: '#000000', pos: 0, alpha: 1},
+          {color: '#000000', pos: 100, alpha: 0}
+        ]
+      }
+    ];
+    
+    renderLayers();
+    updateMask();
+  }
+});
+
+copyBtn.addEventListener('click', () => {
+  cssOutput.select();
+  document.execCommand('copy');
+  const originalText = copyBtn.innerHTML;
+  copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+  setTimeout(() => {
+    copyBtn.innerHTML = originalText;
+  }, 2000);
+});
+
+// Image upload functionality
+imageUploadBtn.addEventListener('click', () => {
+  imageUpload.click();
+});
+
+imageUpload.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) {
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      foreground.src = event.target.result;
+      foreground.style.display = 'block';
+      foregroundColor.style.display = 'none';
+      isImageMode = true;
+      updateMask();
+    };
+    
+    reader.readAsDataURL(e.target.files[0]);
+  }
+});
+
+// Color mode button
+colorModeBtn.addEventListener('click', () => {
+  foreground.style.display = 'none';
+  foregroundColor.style.display = 'flex';
+  isImageMode = false;
+  foregroundColor.style.backgroundColor = fgColorInput.value;
+  updateMask();
+});
+
+// Render layers UI
+function renderLayers() {
+  layersContainer.innerHTML = '';
+  
+  layers.forEach((layer, index) => {
+    const div = document.createElement('div');
+    div.className = 'gradient-layer new-layer';
+    
+    // Layer header with type selector and remove button
+    const header = document.createElement('div');
+    header.className = 'layer-header';
+    
+    const typeSelect = document.createElement('select');
+    ['linear', 'radial', 'conic'].forEach(t => {
+      const option = document.createElement('option');
+      option.value = t;
+      option.textContent = t.charAt(0).toUpperCase() + t.slice(1) + ' Gradient';
+      if (layer.type === t) option.selected = true;
+      typeSelect.appendChild(option);
+    });
+    typeSelect.addEventListener('change', () => { 
+      layer.type = typeSelect.value; 
+      updateMask(); 
+      renderLayers(); // Re-render to show/hide gradient-specific controls
+    });
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'danger';
+    removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+    removeBtn.addEventListener('click', () => {
+      if (layers.length > 1) {
+        layers.splice(index, 1);
+        renderLayers();
+        updateMask();
+      } else {
+        alert('At least one layer is required!');
+      }
+    });
+    
+    header.appendChild(typeSelect);
+    header.appendChild(removeBtn);
+    div.appendChild(header);
+    
+    // Gradient-specific controls
+    if (layer.type === 'linear') {
+      // Angle control for linear gradients
+      const angleControl = document.createElement('div');
+      angleControl.className = 'control-row';
+      
+      const angleLabel = document.createElement('label');
+      angleLabel.textContent = 'Angle:';
+      angleLabel.setAttribute('for', `angle-${index}`);
+      
+      const angleInput = document.createElement('input');
+      angleInput.type = 'range';
+      angleInput.id = `angle-${index}`;
+      angleInput.min = 0;
+      angleInput.max = 360;
+      angleInput.value = layer.angle;
+      angleInput.addEventListener('input', () => {
+        layer.angle = parseInt(angleInput.value);
+        // Update the textbox value
+        const angleValue = document.getElementById(`angleValue-${index}`);
+        if (angleValue) angleValue.value = layer.angle;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const angleValue = document.createElement('input');
+      angleValue.type = 'number';
+      angleValue.id = `angleValue-${index}`;
+      angleValue.min = 0;
+      angleValue.max = 360;
+      angleValue.value = layer.angle;
+      angleValue.addEventListener('input', () => {
+        layer.angle = parseInt(angleValue.value);
+        angleInput.value = layer.angle;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      angleControl.appendChild(angleLabel);
+      angleControl.appendChild(angleInput);
+      angleControl.appendChild(angleValue);
+      div.appendChild(angleControl);
+    } else if (layer.type === 'radial') {
+      // Shape control for radial gradients
+      const shapeControl = document.createElement('div');
+      shapeControl.className = 'control-row';
+      
+      const shapeLabel = document.createElement('label');
+      shapeLabel.textContent = 'Shape:';
+      
+      const shapeSelect = document.createElement('select');
+      shapeSelect.id = `shape-${index}`;
+      ['circle', 'ellipse'].forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+        if (layer.shape === s) option.selected = true;
+        shapeSelect.appendChild(option);
+      });
+      shapeSelect.addEventListener('change', () => {
+        layer.shape = shapeSelect.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      shapeControl.appendChild(shapeLabel);
+      shapeControl.appendChild(shapeSelect);
+      div.appendChild(shapeControl);
+      
+      // Size control for radial gradients
+      const sizeControl = document.createElement('div');
+      sizeControl.className = 'control-row';
+      
+      const sizeLabel = document.createElement('label');
+      sizeLabel.textContent = 'Size:';
+      
+      const sizeSelect = document.createElement('select');
+      sizeSelect.id = `size-${index}`;
+      ['closest-side', 'closest-corner', 'farthest-side', 'farthest-corner'].forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = s.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('-');
+        if (layer.size === s) option.selected = true;
+        sizeSelect.appendChild(option);
+      });
+      sizeSelect.addEventListener('change', () => {
+        layer.size = sizeSelect.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      sizeControl.appendChild(sizeLabel);
+      sizeControl.appendChild(sizeSelect);
+      div.appendChild(sizeControl);
+    } else if (layer.type === 'conic') {
+      // Angle control for conic gradients
+      const angleControl = document.createElement('div');
+      angleControl.className = 'control-row';
+      
+      const angleLabel = document.createElement('label');
+      angleLabel.textContent = 'Angle:';
+      angleLabel.setAttribute('for', `angle-${index}`);
+      
+      const angleInput = document.createElement('input');
+      angleInput.type = 'range';
+      angleInput.id = `angle-${index}`;
+      angleInput.min = 0;
+      angleInput.max = 360;
+      angleInput.value = layer.angle;
+      angleInput.addEventListener('input', () => {
+        layer.angle = parseInt(angleInput.value);
+        // Update the textbox value
+        const angleValue = document.getElementById(`angleValue-${index}`);
+        if (angleValue) angleValue.value = layer.angle;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const angleValue = document.createElement('input');
+      angleValue.type = 'number';
+      angleValue.id = `angleValue-${index}`;
+      angleValue.min = 0;
+      angleValue.max = 360;
+      angleValue.value = layer.angle;
+      angleValue.addEventListener('input', () => {
+        layer.angle = parseInt(angleValue.value);
+        angleInput.value = layer.angle;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      angleControl.appendChild(angleLabel);
+      angleControl.appendChild(angleInput);
+      angleControl.appendChild(angleValue);
+      div.appendChild(angleControl);
+    }
+    
+    // Center position controls (for radial and conic gradients)
+    if (layer.type === 'radial' || layer.type === 'conic') {
+      const centerControl = document.createElement('div');
+      centerControl.className = 'control-row';
+      
+      const centerXLabel = document.createElement('label');
+      centerXLabel.textContent = 'Center X:';
+      
+      const centerXSelect = document.createElement('select');
+      centerXSelect.id = `centerX-${index}`;
+      ['left', 'center', 'right', 'custom'].forEach(pos => {
+        const option = document.createElement('option');
+        option.value = pos;
+        option.textContent = pos.charAt(0).toUpperCase() + pos.slice(1);
+        if (layer.centerX === pos) option.selected = true;
+        centerXSelect.appendChild(option);
+      });
+      centerXSelect.addEventListener('change', () => {
+        layer.centerX = centerXSelect.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const centerXValue = document.createElement('input');
+      centerXValue.type = 'text';
+      centerXValue.id = `centerXValue-${index}`;
+      centerXValue.value = layer.centerX;
+      centerXValue.style.display = layer.centerX === 'custom' ? 'block' : 'none';
+      centerXValue.addEventListener('input', () => {
+        layer.centerX = centerXValue.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      centerXSelect.addEventListener('change', () => {
+        if (centerXSelect.value === 'custom') {
+          centerXValue.style.display = 'block';
+        } else {
+          centerXValue.style.display = 'none';
+          centerXValue.value = centerXSelect.value;
+        }
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const centerYLabel = document.createElement('label');
+      centerYLabel.textContent = 'Center Y:';
+      
+      const centerYSelect = document.createElement('select');
+      centerYSelect.id = `centerY-${index}`;
+      ['top', 'center', 'bottom', 'custom'].forEach(pos => {
+        const option = document.createElement('option');
+        option.value = pos;
+        option.textContent = pos.charAt(0).toUpperCase() + pos.slice(1);
+        if (layer.centerY === pos) option.selected = true;
+        centerYSelect.appendChild(option);
+      });
+      centerYSelect.addEventListener('change', () => {
+        layer.centerY = centerYSelect.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const centerYValue = document.createElement('input');
+      centerYValue.type = 'text';
+      centerYValue.id = `centerYValue-${index}`;
+      centerYValue.value = layer.centerY;
+      centerYValue.style.display = layer.centerY === 'custom' ? 'block' : 'none';
+      centerYValue.addEventListener('input', () => {
+        layer.centerY = centerYValue.value;
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      centerYSelect.addEventListener('change', () => {
+        if (centerYSelect.value === 'custom') {
+          centerYValue.style.display = 'block';
+        } else {
+          centerYValue.style.display = 'none';
+          centerYValue.value = centerYSelect.value;
+        }
+        updateMask();
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      centerControl.appendChild(centerXLabel);
+      centerControl.appendChild(centerXSelect);
+      centerControl.appendChild(centerXValue);
+      centerControl.appendChild(centerYLabel);
+      centerControl.appendChild(centerYSelect);
+      centerControl.appendChild(centerYValue);
+      div.appendChild(centerControl);
+    }
+    
+    // Small gradient preview
+    const gradientPreview = document.createElement('div');
+    gradientPreview.className = 'small-gradient-preview';
+    gradientPreview.style.background = getGradientString(layer);
+    gradientPreview.title = getGradientString(layer);
+    div.appendChild(gradientPreview);
+    
+    // Points container
+    const pointsContainer = document.createElement('div');
+    layer.points.forEach((point, pIndex) => {
+      const pc = document.createElement('div');
+      pc.className = 'point-control';
+      
+      // Point preview
+      const pointPreview = document.createElement('div');
+      pointPreview.className = 'point-preview';
+      pointPreview.style.backgroundColor = point.color;
+      pointPreview.style.opacity = point.alpha;
+      
+      // Alpha controls row
+      const alphaRow = document.createElement('div');
+      alphaRow.className = 'point-row';
+      
+      const alphaLabel = document.createElement('label');
+      alphaLabel.textContent = 'Alpha:';
+      alphaLabel.style.minWidth = '40px';
+      
+      const alphaInput = document.createElement('input');
+      alphaInput.type = 'range';
+      alphaInput.min = 0;
+      alphaInput.max = 1;
+      alphaInput.step = 0.01;
+      alphaInput.value = point.alpha;
+      alphaInput.addEventListener('input', () => { 
+        point.alpha = parseFloat(alphaInput.value); 
+        alphaNumber.value = point.alpha;
+        pointPreview.style.opacity = point.alpha;
+        updateMask(); 
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const alphaNumber = document.createElement('input');
+      alphaNumber.type = 'number';
+      alphaNumber.min = 0;
+      alphaNumber.max = 1;
+      alphaNumber.step = 0.01;
+      alphaNumber.value = point.alpha;
+      alphaNumber.addEventListener('input', () => { 
+        point.alpha = parseFloat(alphaNumber.value); 
+        alphaInput.value = point.alpha;
+        pointPreview.style.opacity = point.alpha;
+        updateMask(); 
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      alphaRow.appendChild(alphaLabel);
+      alphaRow.appendChild(alphaInput);
+      alphaRow.appendChild(alphaNumber);
+      pc.appendChild(alphaRow);
+      
+      // Position controls row
+      const posRow = document.createElement('div');
+      posRow.className = 'point-row';
+      
+      const posLabel = document.createElement('label');
+      posLabel.textContent = 'Pos:';
+      posLabel.style.minWidth = '30px';
+      
+      const posInput = document.createElement('input');
+      posInput.type = 'range';
+      posInput.min = 0;
+      posInput.max = 100;
+      posInput.value = point.pos;
+      posInput.addEventListener('input', () => { 
+        point.pos = parseFloat(posInput.value); 
+        posNumber.value = point.pos;
+        updateMask(); 
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      const posNumber = document.createElement('input');
+      posNumber.type = 'number';
+      posNumber.min = 0;
+      posNumber.max = 100;
+      posNumber.value = point.pos;
+      posNumber.addEventListener('input', () => { 
+        point.pos = parseFloat(posNumber.value); 
+        posInput.value = point.pos;
+        updateMask(); 
+        // Update the small preview
+        const previewDiv = div.querySelector('.small-gradient-preview');
+        previewDiv.style.background = getGradientString(layer);
+      });
+      
+      posRow.appendChild(posLabel);
+      posRow.appendChild(posInput);
+      posRow.appendChild(posNumber);
+      pc.appendChild(posRow);
+      
+      // Reorder buttons row
+      const controlsRow = document.createElement('div');
+      controlsRow.className = 'point-controls-row';
+      
+      const upBtn = document.createElement('button');
+      upBtn.className = 'reorder-btn';
+      upBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+      upBtn.title = 'Move up';
+      upBtn.addEventListener('click', () => {
+        if (pIndex > 0) {
+          [layer.points[pIndex], layer.points[pIndex - 1]] = 
+          [layer.points[pIndex - 1], layer.points[pIndex]];
+          renderLayers();
+          updateMask();
+        }
+      });
+      
+      const downBtn = document.createElement('button');
+      downBtn.className = 'reorder-btn';
+      downBtn.innerHTML = '<i class="fas fa-arrow-down"></i>';
+      downBtn.title = 'Move down';
+      downBtn.addEventListener('click', () => {
+        if (pIndex < layer.points.length - 1) {
+          [layer.points[pIndex], layer.points[pIndex + 1]] = 
+          [layer.points[pIndex + 1], layer.points[pIndex]];
+          renderLayers();
+          updateMask();
+        }
+      });
+      
+      const addPointBtn = document.createElement('button');
+      addPointBtn.className = 'secondary';
+      addPointBtn.innerHTML = '<i class="fas fa-plus"></i>';
+      addPointBtn.addEventListener('click', () => {
+        const newPoint = {color: '#000000', pos: Math.min(100, point.pos + 20), alpha: 1};
+        layer.points.splice(pIndex + 1, 0, newPoint);
+        renderLayers();
+        updateMask();
+      });
+      
+      const removePointBtn = document.createElement('button');
+      removePointBtn.className = 'danger';
+      removePointBtn.innerHTML = '<i class="fas fa-minus"></i>';
+      removePointBtn.disabled = layer.points.length <= 2;
+      removePointBtn.addEventListener('click', () => {
+        if (layer.points.length > 2) {
+          layer.points.splice(pIndex, 1);
+          renderLayers();
+          updateMask();
+        }
+      });
+      
+      controlsRow.appendChild(upBtn);
+      controlsRow.appendChild(downBtn);
+      controlsRow.appendChild(addPointBtn);
+      controlsRow.appendChild(removePointBtn);
+      pc.appendChild(controlsRow);
+      pointsContainer.appendChild(pc);
+    });
+    
+    // Layer reorder buttons
+    const layerReorder = document.createElement('div');
+    layerReorder.style.display = 'flex';
+    layerReorder.style.gap = '8px';
+    layerReorder.style.marginTop = '10px';
+    
+    const layerUpBtn = document.createElement('button');
+    layerUpBtn.className = 'secondary';
+    layerUpBtn.innerHTML = '<i class="fas fa-arrow-up"></i> Move Layer Up';
+    layerUpBtn.disabled = index === 0;
+    layerUpBtn.addEventListener('click', () => {
+      if (index > 0) {
+        [layers[index], layers[index - 1]] = [layers[index - 1], layers[index]];
+        renderLayers();
+        updateMask();
+      }
+    });
+    
+    const layerDownBtn = document.createElement('button');
+    layerDownBtn.className = 'secondary';
+    layerDownBtn.innerHTML = '<i class="fas fa-arrow-down"></i> Move Layer Down';
+    layerDownBtn.disabled = index === layers.length - 1;
+    layerDownBtn.addEventListener('click', () => {
+      if (index < layers.length - 1) {
+        [layers[index], layers[index + 1]] = [layers[index + 1], layers[index]];
+        renderLayers();
+        updateMask();
+      }
+    });
+    
+    layerReorder.appendChild(layerUpBtn);
+    layerReorder.appendChild(layerDownBtn);
+    div.appendChild(layerReorder);
+    div.appendChild(pointsContainer);
+    layersContainer.appendChild(div);
+  });
+  
+  // Trigger animation
+  setTimeout(() => {
+    document.querySelectorAll('.new-layer').forEach(el => {
+      el.classList.remove('new-layer');
+    });
+  }, 10);
+}
+
+// Helper function to get gradient string for preview
+function getGradientString(layer) {
+  const points = layer.points.map(p => {
+    const colorWithAlpha = `rgba(0, 0, 0, ${p.alpha}) ${p.pos}%`;
+    return colorWithAlpha;
+  }).join(', ');
+  
+  if (layer.type === 'linear') {
+    return `linear-gradient(${layer.angle}deg, ${points})`;
+  }
+  if (layer.type === 'radial') {
+    const center = `${layer.centerX} ${layer.centerY}`;
+    return `radial-gradient(${layer.shape} at ${center}, ${points})`;
+  }
+  if (layer.type === 'conic') {
+    const center = `${layer.centerX} ${layer.centerY}`;
+    return `conic-gradient(from ${layer.angle}deg at ${center}, ${points})`;
+  }
+  return '';
+}
+
+// Update mask and CSS output
+function updateMask() {
+  const maskStrings = layers.map(layer => {
+    const points = layer.points.map(p => {
+      const colorWithAlpha = `rgba(0, 0, 0, ${p.alpha}) ${p.pos}%`;
+      return colorWithAlpha;
+    }).join(', ');
+    
+    if (layer.type === 'linear') {
+      return `linear-gradient(${layer.angle}deg, ${points})`;
+    }
+    if (layer.type === 'radial') {
+      const center = `${layer.centerX} ${layer.centerY}`;
+      return `radial-gradient(${layer.shape} at ${center}, ${points})`;
+    }
+    if (layer.type === 'conic') {
+      const center = `${layer.centerX} ${layer.centerY}`;
+      return `conic-gradient(from ${layer.angle}deg at ${center}, ${points})`;
+    }
+  });
+  
+  const maskImage = maskStrings.join(', ');
+  const positionValue = maskPositionSelect.value === 'custom' ? 
+    maskPositionInput.value : maskPositionSelect.value;
+  const sizeValue = maskSizeSelect.value === 'custom' ? 
+    maskSizeValue.value : maskSizeSelect.value;
+  
+  if (isImageMode) {
+    foreground.style.webkitMaskImage = maskImage;
+    foreground.style.maskImage = maskImage;
+    foreground.style.webkitMaskRepeat = maskRepeatSelect.value;
+    foreground.style.maskRepeat = maskRepeatSelect.value;
+    foreground.style.webkitMaskPosition = positionValue;
+    foreground.style.maskPosition = positionValue;
+    foreground.style.webkitMaskSize = sizeValue;
+    foreground.style.maskSize = sizeValue;
+    foreground.style.webkitMaskOrigin = maskOriginSelect.value;
+    foreground.style.maskOrigin = maskOriginSelect.value;
+    foreground.style.webkitMaskClip = maskClipSelect.value;
+    foreground.style.maskClip = maskClipSelect.value;
+    foreground.style.webkitMaskComposite = compositeModeSelect.value;
+    foreground.style.maskComposite = compositeModeSelect.value;
+  } else {
+    foregroundColor.style.webkitMaskImage = maskImage;
+    foregroundColor.style.maskImage = maskImage;
+    foregroundColor.style.webkitMaskRepeat = maskRepeatSelect.value;
+    foregroundColor.style.maskRepeat = maskRepeatSelect.value;
+    foregroundColor.style.webkitMaskPosition = positionValue;
+    foregroundColor.style.maskPosition = positionValue;
+    foregroundColor.style.webkitMaskSize = sizeValue;
+    foregroundColor.style.maskSize = sizeValue;
+    foregroundColor.style.webkitMaskOrigin = maskOriginSelect.value;
+    foregroundColor.style.maskOrigin = maskOriginSelect.value;
+    foregroundColor.style.webkitMaskClip = maskClipSelect.value;
+    foregroundColor.style.maskClip = maskClipSelect.value;
+    foregroundColor.style.webkitMaskComposite = compositeModeSelect.value;
+    foregroundColor.style.maskComposite = compositeModeSelect.value;
+  }
+  
+  // Generate CSS output
+  const css = `-webkit-mask-image: ${maskImage};
+mask-image: ${maskImage};
+-webkit-mask-composite: ${compositeModeSelect.value};
+mask-composite: ${compositeModeSelect.value};
+-webkit-mask-repeat: ${maskRepeatSelect.value};
+mask-repeat: ${maskRepeatSelect.value};
+-webkit-mask-position: ${positionValue};
+mask-position: ${positionValue};
+-webkit-mask-size: ${sizeValue};
+mask-size: ${sizeValue};
+-webkit-mask-origin: ${maskOriginSelect.value};
+mask-origin: ${maskOriginSelect.value};
+-webkit-mask-clip: ${maskClipSelect.value};
+mask-clip: ${maskClipSelect.value};`;
+  
+  cssOutput.value = css;
+}
+
+// Initialize
+document.getElementById('preview').style.backgroundColor = bgColorInput.value;
+foregroundColor.style.backgroundColor = fgColorInput.value;
+renderLayers();
+updateMask();
+
+// Handle scrollbar visibility based on content
+const controls = document.getElementById('controls');
+const resizeObserver = new ResizeObserver(() => {
+  if (controls.scrollHeight > controls.clientHeight) {
+    controls.classList.remove('no-scrollbar');
+  } else {
+    controls.classList.add('no-scrollbar');
+  }
+});
+
+resizeObserver.observe(controls);
+</script>
+</body>
+</html>
