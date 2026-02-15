@@ -86,6 +86,10 @@
     <input id="file" type="file" accept="image/*" multiple>
     <button id="loadExample">Load gradient placeholder</button>
 
+    <label>Pre-process brightness</label>
+    <input id="brightness" type="range" min="-100" max="100" step="1" value="0">
+    <div class="small">Brightness: <span id="brightnessVal">0</span></div>
+
     <label>Factor (downscale)</label>
     <input id="factor" type="range" min="0.05" max="1" step="0.01" value="0.5">
     <div class="small">Factor: <span id="factorVal">0.50</span></div>
@@ -108,7 +112,7 @@
     <select id="dither">
       <optgroup label="— Ordered / Bayer (JS, structured retro) —">
         <option value="js:bayer2">Bayer 2×2 (coarse)</option>
-        <option value="js:bayer4" selected>Bayer 4×4 (classic)</option>
+        <option value="js:bayer4">Bayer 4×4 (classic)</option>
         <option value="js:bayer8">Bayer 8×8 (fine)</option>
         <option value="js:bayer16">Bayer 16×16 (very fine)</option>
         <option value="js:cluster4">Cluster dot 4×4</option>
@@ -119,7 +123,7 @@
         <option value="im:Riemersma">Riemersma</option>
       </optgroup>
       <optgroup label="— None —">
-        <option value="none">None (nearest colour)</option>
+        <option value="none" selected>None (nearest colour)</option>
       </optgroup>
     </select>
 
@@ -135,15 +139,15 @@
     <label>Pre-sharpen (before quantize)</label>
     <select id="sharpen">
       <option value="none">None</option>
-      <option value="mild" selected>Mild (0×1 unsharp)</option>
-      <option value="strong">Strong (0×2 unsharp)</option>
+      <option value="mild">Mild (0×1 unsharp)</option>
+      <option value="strong" selected>Strong (0×2 unsharp)</option>
     </select>
 
     <label>Resize filter</label>
     <select id="filter">
       <option>Point</option>
       <option>Lanczos</option>
-      <option>Box</option>
+      <option selected>Box</option>
       <option>Cubic</option>
       <option>Triangle</option>
       <option>LanczosSharp</option>
@@ -187,6 +191,8 @@
     const fileListEl       = document.getElementById('fileList');
     const statusEl         = document.getElementById('status');
     const batchProgressEl  = document.getElementById('batchProgress');
+    const brightnessInput  = document.getElementById('brightness');
+    const brightnessVal    = document.getElementById('brightnessVal');
     const factorInput      = document.getElementById('factor');
     const factorVal        = document.getElementById('factorVal');
     const paletteSelect    = document.getElementById('palette');
@@ -336,13 +342,17 @@
       }
     }
 
+    brightnessInput.addEventListener('input', () => {
+      brightnessVal.textContent = brightnessInput.value;
+    });
+
     factorInput.addEventListener('input', () => {
       factorVal.textContent = Number(factorInput.value).toFixed(2);
     });
 
     const liveUpdate = debounce(() => { if (currentFileBuffer) runConversion(false); }, 300);
 
-    [factorInput, paletteSelect, ditherSelect, quantizeCSSelect, sharpenSelect, pathSelect].forEach(el => {
+    [brightnessInput, factorInput, paletteSelect, ditherSelect, quantizeCSSelect, sharpenSelect, pathSelect].forEach(el => {
       el.addEventListener('change', () => { syncFilterEnable(); liveUpdate(); });
       el.addEventListener('input',  () => { syncFilterEnable(); liveUpdate(); });
     });
@@ -601,6 +611,21 @@
       // FirstDownscale path, after us in FirstRecolor — see buildCmd).
 
       const imageData    = ctx.getImageData(0, 0, targetW, targetH);
+
+      // Apply brightness before dithering.
+      // Value is -100…+100; we add it as a direct offset in linear light.
+      const bv = parseInt(brightnessInput.value, 10);
+      if (bv !== 0) {
+        const bLinear = Math.pow(Math.abs(bv) / 100, 2.2) * Math.sign(bv);
+        const dd = imageData.data;
+        for (let i = 0; i < dd.length; i += 4) {
+          for (let c = 0; c < 3; c++) {
+            const lin = Math.pow(dd[i+c] / 255, 2.2) + bLinear;
+            dd[i+c] = Math.round(Math.pow(Math.max(0, Math.min(1, lin)), 1/2.2) * 255);
+          }
+        }
+      }
+
       const linearPalette = buildLinearPalette(paletteSelect.value);
 
       let matrix, size;
@@ -631,16 +656,23 @@
       return [];
     }
 
+    function buildBrightnessArgs() {
+      const bv = parseInt(brightnessInput.value, 10);
+      if (bv === 0) return [];
+      // IM -brightness-contrast takes a value in -100…+100 for brightness
+      return ['-brightness-contrast', `${bv}x0`];
+    }
+
     // Builds the IM command.  For JS-dithered modes the image arriving at IM is
     // already dithered and exactly the target size, so we only need remap+upscale.
     function buildCmd(origW, origH, newW, newH, filterVal, pathVal, isJsDither) {
-      const sharpenArgs  = buildSharpenArgs(sharpenSelect.value);
-      const qcs          = quantizeCSSelect.value;
-      const quantizeArgs = ['-quantize', qcs];
+      const sharpenArgs   = buildSharpenArgs(sharpenSelect.value);
+      const brightnessArgs = buildBrightnessArgs();
+      const qcs           = quantizeCSSelect.value;
+      const quantizeArgs  = ['-quantize', qcs];
 
       if (isJsDither) {
-        // Image is already dithered at newW×newH; just remap (nearest, no dither)
-        // then upscale with Point.
+        // Brightness was already applied in JS canvas pass; just remap + upscale.
         return [
           'convert', 'in.png',
           ...quantizeArgs,
@@ -659,6 +691,7 @@
       if (pathVal === 'FirstDownscale') {
         return [
           'convert', 'in.png',
+          ...brightnessArgs,
           '-filter', filterVal, '-resize', `${newW}x${newH}!`,
           ...sharpenArgs,
           ...quantizeArgs,
@@ -669,6 +702,7 @@
       } else {
         return [
           'convert', 'in.png',
+          ...brightnessArgs,
           ...sharpenArgs,
           ...quantizeArgs,
           ...ditherArgs, '-remap', 'palette.png',
