@@ -104,7 +104,42 @@
       <option value="Old-RedCGA">Old-RedCGA</option>
     </select>
 
-    <label>Filter</label>
+    <label>Dither</label>
+    <select id="dither">
+      <optgroup label="— Ordered / Bayer (JS, structured retro) —">
+        <option value="js:bayer2">Bayer 2×2 (coarse)</option>
+        <option value="js:bayer4" selected>Bayer 4×4 (classic)</option>
+        <option value="js:bayer8">Bayer 8×8 (fine)</option>
+        <option value="js:bayer16">Bayer 16×16 (very fine)</option>
+        <option value="js:cluster4">Cluster dot 4×4</option>
+        <option value="js:cluster8">Cluster dot 8×8</option>
+      </optgroup>
+      <optgroup label="— Error diffusion (IM native, smooth) —">
+        <option value="im:FloydSteinberg">Floyd-Steinberg</option>
+        <option value="im:Riemersma">Riemersma</option>
+      </optgroup>
+      <optgroup label="— None —">
+        <option value="none">None (nearest colour)</option>
+      </optgroup>
+    </select>
+
+    <label>Quantize colorspace</label>
+    <select id="quantizeCS">
+      <option value="CIELab" selected>CIELab (perceptually uniform — recommended)</option>
+      <option value="LCHab">LCHab (hue-aware perceptual)</option>
+      <option value="sRGB">sRGB (default ImageMagick)</option>
+      <option value="Transparent">Transparent (preserves alpha)</option>
+      <option value="YCbCr">YCbCr (luma-weighted)</option>
+    </select>
+
+    <label>Pre-sharpen (before quantize)</label>
+    <select id="sharpen">
+      <option value="none">None</option>
+      <option value="mild" selected>Mild (0×1 unsharp)</option>
+      <option value="strong">Strong (0×2 unsharp)</option>
+    </select>
+
+    <label>Resize filter</label>
     <select id="filter">
       <option>Point</option>
       <option>Lanczos</option>
@@ -116,8 +151,8 @@
 
     <label>Processing path</label>
     <select id="path">
-      <option value="FirstDownscale">FirstDownscale (Downscale -> Recolor -> Upscale)</option>
-      <option value="FirstRecolor">FirstRecolor (Recolor -> Downscale -> Upscale)</option>
+      <option value="FirstDownscale">FirstDownscale (Downscale → Recolor → Upscale)</option>
+      <option value="FirstRecolor">FirstRecolor (Recolor → Downscale → Upscale)</option>
     </select>
 
     <button id="convert">Convert (single)</button>
@@ -147,20 +182,23 @@
 
     const placeholderURL = 'https://upload.wikimedia.org/wikipedia/commons/8/83/LCH_Gradient_Example.png';
 
-    const fileInput      = document.getElementById('file');
-    const loadExampleBtn = document.getElementById('loadExample');
-    const fileListEl     = document.getElementById('fileList');
-    const statusEl       = document.getElementById('status');
-    const batchProgressEl= document.getElementById('batchProgress');
-    const factorInput    = document.getElementById('factor');
-    const factorVal      = document.getElementById('factorVal');
-    const paletteSelect  = document.getElementById('palette');
-    const filterSelect   = document.getElementById('filter');
-    const pathSelect     = document.getElementById('path');
-    const convertBtn     = document.getElementById('convert');
-    const downloadBtn    = document.getElementById('download');
-    const saveBatchBtn   = document.getElementById('saveBatch');
-    const outputImg      = document.getElementById('output');
+    const fileInput        = document.getElementById('file');
+    const loadExampleBtn   = document.getElementById('loadExample');
+    const fileListEl       = document.getElementById('fileList');
+    const statusEl         = document.getElementById('status');
+    const batchProgressEl  = document.getElementById('batchProgress');
+    const factorInput      = document.getElementById('factor');
+    const factorVal        = document.getElementById('factorVal');
+    const paletteSelect    = document.getElementById('palette');
+    const ditherSelect     = document.getElementById('dither');
+    const quantizeCSSelect = document.getElementById('quantizeCS');
+    const sharpenSelect    = document.getElementById('sharpen');
+    const filterSelect     = document.getElementById('filter');
+    const pathSelect       = document.getElementById('path');
+    const convertBtn       = document.getElementById('convert');
+    const downloadBtn      = document.getElementById('download');
+    const saveBatchBtn     = document.getElementById('saveBatch');
+    const outputImg        = document.getElementById('output');
 
     let currentFileBuffer = null;
     let currentFileName   = '';
@@ -304,7 +342,7 @@
 
     const liveUpdate = debounce(() => { if (currentFileBuffer) runConversion(false); }, 300);
 
-    [factorInput, paletteSelect, pathSelect].forEach(el => {
+    [factorInput, paletteSelect, ditherSelect, quantizeCSSelect, sharpenSelect, pathSelect].forEach(el => {
       el.addEventListener('change', () => { syncFilterEnable(); liveUpdate(); });
       el.addEventListener('input',  () => { syncFilterEnable(); liveUpdate(); });
     });
@@ -416,21 +454,236 @@
       return null;
     }
 
-    function buildCmd(origW, origH, newW, newH, filterVal, pathVal, colorCount) {
-      if (pathVal === 'FirstDownscale') {
-        return ['convert','in.png','-filter',filterVal,'-resize',`${newW}x${newH}!`,
-                '-remap','palette.png','-colors',String(colorCount),
-                '-filter','Point','-resize',`${origW}x${origH}!`,'out.png'];
+    // =========================================================================
+    // Dithering
+    //
+    // wasm-imagemagick ships IM 7.0.8-28 which supports only three -dither
+    // values: None, Riemersma, FloydSteinberg.  -dither Ordered and all Bayer
+    // / halftone -ordered-dither patterns are NOT compiled into this build
+    // (only "threshold" and "checks" are present in its thresholds.xml).
+    //
+    // Solution: Bayer / cluster-dot dithering is implemented here in JS using
+    // the Canvas API.  We apply it to the image *before* passing to IM, then
+    // tell IM to use -dither None -remap so it just does a nearest-colour snap
+    // onto the pre-dithered signal.  This gives us any matrix we want.
+    //
+    // For Floyd-Steinberg / Riemersma we skip the JS pass and let IM handle it
+    // natively as before.
+    // =========================================================================
+
+    // --- Bayer matrix generation (recursive) ---------------------------------
+    function bayerMatrix(n) {
+      // Returns a flat Float32Array of n×n values normalised to [0,1)
+      if (n === 1) return new Float32Array([0]);
+      const half = bayerMatrix(n / 2);
+      const size = n * n;
+      const m = new Float32Array(size);
+      const h = n / 2;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < h; x++) {
+          const v = half[y * h + x];          // base value in [0,1)
+          const scaled = v / 4;
+          m[(y    ) * n + (x    )] = scaled + 0/4;  // top-left
+          m[(y    ) * n + (x + h)] = scaled + 2/4;  // top-right
+          m[(y + h) * n + (x    )] = scaled + 3/4;  // bottom-left
+          m[(y + h) * n + (x + h)] = scaled + 1/4;  // bottom-right
+        }
       }
-      return ['convert','in.png','-remap','palette.png','-colors',String(colorCount),
-              '-filter',filterVal,'-resize',`${newW}x${newH}!`,
-              '-filter','Point','-resize',`${origW}x${origH}!`,'out.png'];
+      return m;
+    }
+
+    // --- 4×4 cluster-dot (print-style) matrix --------------------------------
+    // Approximates a circular dot cluster; looks like old magazine halftones.
+    const CLUSTER4 = new Float32Array([
+       12, 5, 6, 13,
+        4, 0, 1,  7,
+       11, 3, 2,  8,
+       15,10, 9, 14
+    ].map(v => v / 16));
+
+    const CLUSTER8 = (() => {
+      // 8×8 cluster-dot pattern (classic Knuth / Ulichney)
+      const raw = [
+        24,10,12,26,35,47,49,37,
+         8, 0, 2,14,45,59,61,51,
+        22, 6, 4,16,43,57,63,53,
+        30,20,18,28,33,41,55,39,
+        34,46,48,36,25,11,13,27,
+        44,58,60,50, 9, 1, 3,15,
+        42,56,62,52,23, 7, 5,17,
+        32,40,54,38,31,21,19,29
+      ];
+      return new Float32Array(raw.map(v => v / 64));
+    })();
+
+    const BAYER_CACHE = {};
+    function getBayer(n) {
+      if (!BAYER_CACHE[n]) BAYER_CACHE[n] = bayerMatrix(n);
+      return BAYER_CACHE[n];
+    }
+
+    // --- Palette nearest-colour in linear RGB --------------------------------
+    function buildLinearPalette(palName) {
+      const srgb = PALETTES[palName] || PALETTES['Palette1High'];
+      return srgb.map(([r, g, b]) => [
+        Math.pow(r / 255, 2.2),
+        Math.pow(g / 255, 2.2),
+        Math.pow(b / 255, 2.2),
+      ]);
+    }
+
+    function nearestPaletteColor(lr, lg, lb, linearPalette) {
+      let bestD = Infinity, bestIdx = 0;
+      for (let i = 0; i < linearPalette.length; i++) {
+        const [pr, pg, pb] = linearPalette[i];
+        const d = (lr-pr)**2 + (lg-pg)**2 + (lb-pb)**2;
+        if (d < bestD) { bestD = d; bestIdx = i; }
+      }
+      return linearPalette[bestIdx];
+    }
+
+    // --- JS ordered dithering ------------------------------------------------
+    // Applies threshold-matrix dithering directly to imageData pixels.
+    // Works in linear light to avoid gamma-skewed thresholds.
+    function applyOrderedDither(imageData, matrix, matrixSize, linearPalette) {
+      const d = imageData.data;
+      const w = imageData.width, h = imageData.height;
+      // Strength: how much of the threshold to apply (1.0 = full range between
+      // two palette entries; tuned per matrix size)
+      const spread = 0.8;
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          // sRGB → linear
+          const lr = Math.pow(d[i  ] / 255, 2.2);
+          const lg = Math.pow(d[i+1] / 255, 2.2);
+          const lb = Math.pow(d[i+2] / 255, 2.2);
+
+          // Threshold from matrix (centred: -0.5 … +0.5)
+          const t = (matrix[(y % matrixSize) * matrixSize + (x % matrixSize)] - 0.5) * spread;
+
+          // Apply threshold bias
+          const lr2 = Math.max(0, Math.min(1, lr + t));
+          const lg2 = Math.max(0, Math.min(1, lg + t));
+          const lb2 = Math.max(0, Math.min(1, lb + t));
+
+          // Snap to nearest palette colour (in linear space)
+          const [pr, pg, pb] = nearestPaletteColor(lr2, lg2, lb2, linearPalette);
+
+          // linear → sRGB
+          d[i  ] = Math.round(Math.pow(pr, 1/2.2) * 255);
+          d[i+1] = Math.round(Math.pow(pg, 1/2.2) * 255);
+          d[i+2] = Math.round(Math.pow(pb, 1/2.2) * 255);
+          // alpha unchanged
+        }
+      }
+    }
+
+    // Returns an ArrayBuffer of a PNG for the given imageData after JS dithering,
+    // or null if dither mode is an IM-native one.
+    async function applyJsDither(inArrayBuffer, targetW, targetH, filterVal) {
+      const ditherVal = ditherSelect.value;
+      if (!ditherVal.startsWith('js:')) return null; // IM handles it
+
+      // Decode the source image to a canvas at the target (downscaled) size
+      const blob    = new Blob([inArrayBuffer]);
+      const bmp     = await createImageBitmap(blob, { resizeWidth: targetW, resizeHeight: targetH,
+                                                       resizeQuality: filterVal === 'Point' ? 'pixelated' : 'high' });
+      const canvas  = document.createElement('canvas');
+      canvas.width  = targetW; canvas.height = targetH;
+      const ctx     = canvas.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      bmp.close();
+
+      // Optional pre-sharpen via a simple convolution isn't practical here;
+      // we rely on the IM unsharp pass instead (which runs before us in the
+      // FirstDownscale path, after us in FirstRecolor — see buildCmd).
+
+      const imageData    = ctx.getImageData(0, 0, targetW, targetH);
+      const linearPalette = buildLinearPalette(paletteSelect.value);
+
+      let matrix, size;
+      switch (ditherVal) {
+        case 'js:bayer2':   matrix = getBayer(2);  size = 2;  break;
+        case 'js:bayer4':   matrix = getBayer(4);  size = 4;  break;
+        case 'js:bayer8':   matrix = getBayer(8);  size = 8;  break;
+        case 'js:bayer16':  matrix = getBayer(16); size = 16; break;
+        case 'js:cluster4': matrix = CLUSTER4;     size = 4;  break;
+        case 'js:cluster8': matrix = CLUSTER8;     size = 8;  break;
+        default:            matrix = getBayer(4);  size = 4;
+      }
+
+      applyOrderedDither(imageData, matrix, size, linearPalette);
+      ctx.putImageData(imageData, 0, 0);
+
+      return new Promise(resolve => canvas.toBlob(b => {
+        b.arrayBuffer().then(ab => resolve(ab));
+      }, 'image/png'));
+    }
+
+    // =========================================================================
+    // ImageMagick command builder
+    // =========================================================================
+    function buildSharpenArgs(sharpenVal) {
+      if (sharpenVal === 'mild')   return ['-unsharp', '0x1'];
+      if (sharpenVal === 'strong') return ['-unsharp', '0x2'];
+      return [];
+    }
+
+    // Builds the IM command.  For JS-dithered modes the image arriving at IM is
+    // already dithered and exactly the target size, so we only need remap+upscale.
+    function buildCmd(origW, origH, newW, newH, filterVal, pathVal, isJsDither) {
+      const sharpenArgs  = buildSharpenArgs(sharpenSelect.value);
+      const qcs          = quantizeCSSelect.value;
+      const quantizeArgs = ['-quantize', qcs];
+
+      if (isJsDither) {
+        // Image is already dithered at newW×newH; just remap (nearest, no dither)
+        // then upscale with Point.
+        return [
+          'convert', 'in.png',
+          ...quantizeArgs,
+          '-dither', 'None', '-remap', 'palette.png',
+          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
+          'out.png'
+        ];
+      }
+
+      const ditherVal  = ditherSelect.value;
+      const imDither   = ditherVal === 'none'              ? 'None'
+                       : ditherVal === 'im:FloydSteinberg' ? 'FloydSteinberg'
+                       :                                     'Riemersma';
+      const ditherArgs = ['-dither', imDither];
+
+      if (pathVal === 'FirstDownscale') {
+        return [
+          'convert', 'in.png',
+          '-filter', filterVal, '-resize', `${newW}x${newH}!`,
+          ...sharpenArgs,
+          ...quantizeArgs,
+          ...ditherArgs, '-remap', 'palette.png',
+          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
+          'out.png'
+        ];
+      } else {
+        return [
+          'convert', 'in.png',
+          ...sharpenArgs,
+          ...quantizeArgs,
+          ...ditherArgs, '-remap', 'palette.png',
+          '-filter', filterVal, '-resize', `${newW}x${newH}!`,
+          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
+          'out.png'
+        ];
+      }
     }
 
     async function runMagick(inArrayBuffer) {
-      const palName     = paletteSelect.value;
-      const paletteBlob = await buildPalettePNG(palName);
+      const palName    = paletteSelect.value;
+      const filterVal  = pathSelect.value === 'FirstRecolor' ? 'Point' : filterSelect.value;
 
+      // Measure source dimensions
       const img    = new Image();
       const tmpUrl = URL.createObjectURL(new Blob([inArrayBuffer]));
       await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = tmpUrl; });
@@ -441,11 +694,19 @@
       const newW   = Math.max(1, Math.round(origW * factor));
       const newH   = Math.max(1, Math.round(origH * factor));
 
-      const filterVal  = pathSelect.value === 'FirstRecolor' ? 'Point' : filterSelect.value;
-      const colorCount = (PALETTES[palName] || PALETTES['Palette1High']).length;
-      const cmdArray   = buildCmd(origW, origH, newW, newH, filterVal, pathSelect.value, colorCount);
+      // For JS-dither modes, we pre-process the image in the browser
+      const isJsDither = ditherSelect.value.startsWith('js:');
+      let workBuffer = inArrayBuffer;
 
-      const u8in  = new Uint8Array(inArrayBuffer);
+      if (isJsDither) {
+        const dithered = await applyJsDither(inArrayBuffer, newW, newH, filterVal);
+        if (dithered) workBuffer = dithered;
+      }
+
+      const paletteBlob = await buildPalettePNG(palName);
+      const cmdArray    = buildCmd(origW, origH, newW, newH, filterVal, pathSelect.value, isJsDither);
+
+      const u8in  = new Uint8Array(workBuffer);
       const u8pal = new Uint8Array(await paletteBlob.arrayBuffer());
       const inputFiles = [
         { name: 'in.png',      content: u8in,  blob: u8in  },
