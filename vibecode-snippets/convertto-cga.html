@@ -2,855 +2,604 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CGA Converter — Full Version</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>CGA Converter</title>
   <style>
-    body {
-      margin:0; padding:0;
-      font-family: system-ui,Segoe UI,Roboto,Arial;
-      background: #222;
-      color: #eee;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+    :root {
+      --bg:#080808;--surf:#101010;--panel:#141414;--bdr:#252525;--bdr2:#333;
+      --green:#00ff41;--green2:#00cc34;--cyan:#55ffff;--red:#ff5555;
+      --txt:#c8c8c8;--txt2:#5a5a5a;--r:5px;--sidebar:288px;--hdr:46px;--mob:58px;
     }
-    #controls {
-      position: absolute;
-      top:10px; left:10px;
-      background: rgba(0,0,0,0.75);
-      padding: 10px;
-      border-radius: 8px;
-      z-index: 100;
-      color: #eee;
-      max-width: 320px;
-      overflow-y: auto;
-      max-height: 90vh;
-    }
-    #controls label { display: block; margin: 8px 0 2px; font-size: 0.9em; }
-    #controls select, #controls input[type=range], #controls button {
-      width: 100%;
-      margin-bottom: 8px;
-    }
-    #fileList {
-      background: #333;
-      border: 1px dashed #555;
-      padding:6px;
-      max-height: 150px;
-      overflow-y: auto;
-      margin-bottom:8px;
-      color: #ccc;
-    }
-    #fileList .file-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    #fileList button {
-      font-size: 0.8em;
-      margin-left:4px;
-      padding:2px 6px;
-    }
-    #imageContainer {
-      flex:1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #111;
-      overflow: auto;
-    }
-    #output {
-      max-width: 100%;
-      max-height: 100%;
-      image-rendering: pixelated;
-      border: none;
-      cursor: pointer;
-      user-select: none;
-      -webkit-user-drag: none;
-      -khtml-user-drag: none;
-      -moz-user-drag: none;
-      -o-user-drag: none;
-      user-drag: none;
-    }
-    .small {
-      font-size: 0.85em;
-      color: #aaa;
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Courier New',monospace;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    /* header */
+    #hdr{height:var(--hdr);background:var(--surf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;z-index:30;gap:10px}
+    #hdr-title{font-size:.95rem;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:var(--green)}
+    #hdr-title em{color:var(--cyan);font-style:normal}
+    #pill{font-size:.7rem;padding:3px 11px;border-radius:99px;border:1px solid var(--bdr2);color:var(--txt2);transition:color .2s,border-color .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+    #pill.busy{color:var(--green);border-color:var(--green2)}
+    #pill.done{color:var(--cyan);border-color:#226666}
+    #pill.err{color:var(--red);border-color:#662222}
+    /* body */
+    #body{flex:1;display:flex;overflow:hidden}
+    /* canvas */
+    #cw{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+    #drop-zone{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border:2px dashed var(--bdr2);margin:14px;border-radius:var(--r);cursor:pointer;transition:border-color .18s,background .18s}
+    #drop-zone.over{border-color:var(--green);background:rgba(0,255,65,.04)}
+    #drop-zone.gone{display:none}
+    #drop-zone svg{opacity:.2}
+    .dz-label{color:var(--txt2);font-size:.83rem;text-align:center;line-height:1.7}
+    .dz-row{display:flex;gap:8px}
+    #out-img{max-width:100%;max-height:100%;image-rendering:pixelated;display:none;user-select:none;-webkit-user-drag:none;cursor:pointer}
+    #out-img.show{display:block}
+    #cmp-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:.68rem;color:var(--txt2);background:rgba(0,0,0,.7);padding:3px 12px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .3s}
+    #cmp-hint.show{opacity:1}
+    /* sidebar */
+    #sidebar{width:var(--sidebar);background:var(--panel);border-left:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+    #sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 12px 20px}
+    #sb-scroll::-webkit-scrollbar{width:3px}
+    #sb-scroll::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+    /* shared control styles */
+    .sec{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green2);border-bottom:1px solid var(--bdr);padding-bottom:5px;margin:16px 0 10px}
+    .sec:first-child{margin-top:0}
+    .field{margin-bottom:10px}
+    .field>label{display:flex;justify-content:space-between;align-items:baseline;font-size:.72rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+    .field>label .v{color:var(--green);font-size:.78rem;text-transform:none;letter-spacing:0}
+    .pal-preview{display:flex;gap:3px;margin-bottom:5px;height:8px}
+    .pal-preview span{flex:1;border-radius:2px}
+    select{width:100%;appearance:none;background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--r);color:var(--txt);padding:8px 30px 8px 10px;font-family:inherit;font-size:.78rem;cursor:pointer;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='5'%3E%3Cpath d='M0 0l5 5 5-5z' fill='%23444'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .15s}
+    select:focus{border-color:var(--green2)}
+    select:disabled{opacity:.38;cursor:not-allowed}
+    select optgroup{color:var(--txt2);font-style:italic}
+    select option{color:var(--txt);font-style:normal;background:#1a1a1a}
+    input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:3px;background:var(--bdr2);border-radius:2px;cursor:pointer;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(0,255,65,.45);cursor:pointer}
+    input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:none;background:var(--green);cursor:pointer}
+    .flist{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);max-height:116px;overflow-y:auto;margin-bottom:8px;font-size:.75rem}
+    .flist-empty{padding:8px 10px;color:var(--txt2)}
+    .frow{display:flex;align-items:center;gap:5px;padding:5px 8px;border-bottom:1px solid var(--bdr)}
+    .frow:last-child{border-bottom:none}
+    .frow-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt)}
+    .btn{width:100%;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--surf);border:1px solid var(--bdr2);border-radius:var(--r);color:var(--txt);font-family:inherit;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;padding:9px 12px;cursor:pointer;margin-bottom:7px;transition:border-color .15s,color .15s,background .15s}
+    .btn:hover{border-color:var(--green2);color:var(--green)}
+    .btn:active{background:rgba(0,255,65,.07)}
+    .btn[disabled]{opacity:.3;pointer-events:none}
+    .btn.pri{border-color:var(--green2);color:var(--green)}
+    .btn.pri:hover{background:rgba(0,255,65,.07)}
+    .btn.sm{padding:3px 8px;font-size:.68rem;width:auto;margin-bottom:0}
+    .btn.danger{border-color:#552222;color:var(--red)}
+    .batch-prog{font-size:.7rem;color:var(--green2);min-height:14px;margin-top:2px}
+    /* mobile bar */
+    #mob-bar{display:none;height:var(--mob);background:var(--panel);border-top:1px solid var(--bdr);padding:0 10px;gap:8px;align-items:center;flex-shrink:0;z-index:30}
+    .mob-btn{flex:1;height:40px;font-size:.7rem;margin-bottom:0;padding:0 6px}
+    #mob-settings{flex:0 0 44px;height:40px;font-size:1.1rem;padding:0;margin-bottom:0}
+    /* sheet */
+    #overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.6)}
+    #sheet{position:fixed;bottom:0;left:0;right:0;z-index:101;max-height:88dvh;background:var(--panel);border-top:1px solid var(--bdr);border-radius:14px 14px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .28s cubic-bezier(.32,.72,0,1)}
+    #sheet.up{transform:translateY(0)}
+    #overlay.up{display:block}
+    #sheet-grip{flex-shrink:0;padding:10px 16px 6px;display:flex;align-items:center;justify-content:center;position:relative}
+    #sheet-grip::before{content:'';width:32px;height:4px;background:var(--bdr2);border-radius:2px}
+    #sheet-x{position:absolute;right:12px;top:6px;background:none;border:none;color:var(--txt2);font-size:1rem;cursor:pointer;padding:6px;line-height:1}
+    #sh-scroll{flex:1;overflow-y:auto;padding:4px 16px 32px}
+    #sh-scroll::-webkit-scrollbar{width:3px}
+    #sh-scroll::-webkit-scrollbar-thumb{background:var(--bdr2)}
+    @media(max-width:640px){#sidebar{display:none}#mob-bar{display:flex}}
+    @media(min-width:641px){#overlay,#sheet{display:none!important}}
   </style>
 </head>
 <body>
-  <div id="controls">
-    <div id="fileList">No files selected</div>
-    <label>Input image(s)</label>
-    <input id="file" type="file" accept="image/*" multiple>
-    <button id="loadExample">Load gradient placeholder</button>
 
-    <label>Pre-process brightness</label>
-    <input id="brightness" type="range" min="-100" max="100" step="1" value="0">
-    <div class="small">Brightness: <span id="brightnessVal">0</span></div>
+<header id="hdr">
+  <div id="hdr-title">CGA<em> / </em>Converter</div>
+  <div id="pill">Initializing…</div>
+</header>
 
-    <label>Factor (downscale)</label>
-    <input id="factor" type="range" min="0.05" max="1" step="0.01" value="0.5">
-    <div class="small">Factor: <span id="factorVal">0.50</span></div>
-
-    <label>Palette</label>
-    <select id="palette">
-      <option value="Palette1High">Palette 1 High — Cyan, Magenta, White</option>
-      <option value="Palette1Low">Palette 1 Low — Cyan, Magenta, Lt.Gray</option>
-      <option value="Palette0High">Palette 0 High — Lt.Green, Lt.Red, Yellow</option>
-      <option value="Palette0Low">Palette 0 Low — Green, Red, Brown</option>
-      <option value="Palette2High">Palette 2 High — Lt.Cyan, Lt.Red, White (Mode 5)</option>
-      <option value="Palette2Low">Palette 2 Low — Cyan, Red, Lt.Gray (Mode 5)</option>
-      <option value="CGA16Color">CGA 16-Color (160x100 / text mode)</option>
-      <option value="Old-HighIntensity">Old-HighIntensity</option>
-      <option value="Old-LowIntensity">Old-LowIntensity</option>
-      <option value="Old-RedCGA">Old-RedCGA</option>
-    </select>
-
-    <label>Dither</label>
-    <select id="dither">
-      <optgroup label="— Ordered / Bayer (JS, structured retro) —">
-        <option value="js:bayer2">Bayer 2×2 (coarse)</option>
-        <option value="js:bayer4">Bayer 4×4 (classic)</option>
-        <option value="js:bayer8">Bayer 8×8 (fine)</option>
-        <option value="js:bayer16">Bayer 16×16 (very fine)</option>
-        <option value="js:cluster4">Cluster dot 4×4</option>
-        <option value="js:cluster8">Cluster dot 8×8</option>
-      </optgroup>
-      <optgroup label="— Error diffusion (IM native, smooth) —">
-        <option value="im:FloydSteinberg">Floyd-Steinberg</option>
-        <option value="im:Riemersma">Riemersma</option>
-      </optgroup>
-      <optgroup label="— None —">
-        <option value="none" selected>None (nearest colour)</option>
-      </optgroup>
-    </select>
-
-    <label>Quantize colorspace</label>
-    <select id="quantizeCS">
-      <option value="CIELab" selected>CIELab (perceptually uniform — recommended)</option>
-      <option value="LCHab">LCHab (hue-aware perceptual)</option>
-      <option value="sRGB">sRGB (default ImageMagick)</option>
-      <option value="Transparent">Transparent (preserves alpha)</option>
-      <option value="YCbCr">YCbCr (luma-weighted)</option>
-    </select>
-
-    <label>Pre-sharpen (before quantize)</label>
-    <select id="sharpen">
-      <option value="none">None</option>
-      <option value="mild">Mild (0×1 unsharp)</option>
-      <option value="strong" selected>Strong (0×2 unsharp)</option>
-    </select>
-
-    <label>Resize filter</label>
-    <select id="filter">
-      <option>Point</option>
-      <option>Lanczos</option>
-      <option selected>Box</option>
-      <option>Cubic</option>
-      <option>Triangle</option>
-      <option>LanczosSharp</option>
-    </select>
-
-    <label>Processing path</label>
-    <select id="path">
-      <option value="FirstDownscale">FirstDownscale (Downscale → Recolor → Upscale)</option>
-      <option value="FirstRecolor">FirstRecolor (Recolor → Downscale → Upscale)</option>
-    </select>
-
-    <button id="convert">Convert (single)</button>
-    <button id="download" disabled>Download result</button>
-    <button id="saveBatch">Save Batch (ZIP)</button>
-    <div class="small" id="status">Initializing...</div>
-    <div class="small" id="batchProgress"></div>
+<div id="body">
+  <div id="cw">
+    <div id="drop-zone">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 4v12M8 8l4-4 4 4"/></svg>
+      <div class="dz-label">Drop image(s) here<br>or tap to browse</div>
+      <div class="dz-row">
+        <button class="btn pri" id="dz-browse" style="width:auto;padding:7px 18px;margin:0">Browse</button>
+        <button class="btn"     id="dz-example" style="width:auto;padding:7px 18px;margin:0">Example</button>
+      </div>
+    </div>
+    <img id="out-img" alt="Output">
+    <div id="cmp-hint">Hold to compare original</div>
   </div>
+  <aside id="sidebar"><div id="sb-scroll"></div></aside>
+</div>
 
-  <div id="imageContainer">
-    <img id="output" alt="Processed output">
-  </div>
+<div id="mob-bar">
+  <button class="btn mob-btn pri" id="mob-dl" disabled>⬇ Save</button>
+  <button class="btn mob-btn"     id="mob-batch">⬛ Batch</button>
+  <button class="btn mob-btn"     id="mob-convert">▶ Convert</button>
+  <button class="btn"             id="mob-settings" style="flex:0 0 44px;height:40px;font-size:1.1rem;padding:0;margin-bottom:0">⚙</button>
+</div>
 
-  <script type="module">
-    import * as Magick from 'https://cdn.jsdelivr.net/npm/wasm-imagemagick@1.2.8/dist/magickApi.js';
+<div id="overlay"></div>
+<div id="sheet">
+  <div id="sheet-grip"><button id="sheet-x">✕</button></div>
+  <div id="sh-scroll"></div>
+</div>
 
-    function loadJSZip() {
-      return new Promise((resolve, reject) => {
-        if (window.JSZip) return resolve(window.JSZip);
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-        s.onload = () => resolve(window.JSZip);
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
+<input type="file" id="file-input" accept="image/*" multiple style="display:none">
+
+<script type="module">
+import * as Magick from 'https://cdn.jsdelivr.net/npm/wasm-imagemagick@1.2.8/dist/magickApi.js';
+
+function loadJSZip(){
+  return new Promise((res,rej)=>{
+    if(window.JSZip)return res(window.JSZip);
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload=()=>res(window.JSZip);s.onerror=rej;document.head.appendChild(s);
+  });
+}
+
+const PLACEHOLDER='https://upload.wikimedia.org/wikipedia/commons/8/83/LCH_Gradient_Example.png';
+
+const PALETTES={
+  'Palette1High':[[0,0,0,255],[0x55,0xFF,0xFF,255],[0xFF,0x55,0xFF,255],[255,255,255,255]],
+  'Palette1Low': [[0,0,0,255],[0,0xAA,0xAA,255],[0xAA,0,0xAA,255],[0xAA,0xAA,0xAA,255]],
+  'Palette0High':[[0,0,0,255],[0x55,0xFF,0x55,255],[0xFF,0x55,0x55,255],[0xFF,0xFF,0x55,255]],
+  'Palette0Low': [[0,0,0,255],[0,0xAA,0,255],[0xAA,0,0,255],[0xAA,0x55,0,255]],
+  'Palette2High':[[0,0,0,255],[0x55,0xFF,0xFF,255],[0xFF,0x55,0x55,255],[255,255,255,255]],
+  'Palette2Low': [[0,0,0,255],[0,0xAA,0xAA,255],[0xAA,0,0,255],[0xAA,0xAA,0xAA,255]],
+  'CGA16Color':[[0,0,0,255],[0,0,0xAA,255],[0,0xAA,0,255],[0,0xAA,0xAA,255],[0xAA,0,0,255],[0xAA,0,0xAA,255],[0xAA,0x55,0,255],[0xAA,0xAA,0xAA,255],[0x55,0x55,0x55,255],[0x55,0x55,0xFF,255],[0x55,0xFF,0x55,255],[0x55,0xFF,0xFF,255],[0xFF,0x55,0x55,255],[0xFF,0x55,0xFF,255],[0xFF,0xFF,0x55,255],[255,255,255,255]],
+  'Old-HighIntensity':[[0,0,0,255],[0x55,0xFF,0xFF,255],[0xFF,0x55,0xFF,255],[255,255,255,255]],
+  'Old-LowIntensity': [[0,0,0,255],[0,0xAA,0xAA,255],[0xAA,0,0xAA,255],[0xAA,0xAA,0xAA,255]],
+  'Old-RedCGA':       [[0,0,0,255],[0xAA,0,0,255],[0xAA,0x55,0,255],[255,255,255,255]],
+};
+
+// ── Controls template (injected into both sidebar and sheet) ──────────────────
+const CTRL_HTML=`
+<p class="sec">Files</p>
+<div class="flist" data-id="flist"><div class="flist-empty">No files selected</div></div>
+<button class="btn pri" data-id="browse-btn">＋ Add images</button>
+<button class="btn"     data-id="example-btn">Load example</button>
+<p class="sec">Image</p>
+<div class="field">
+  <label>Brightness <span class="v" data-id="bv-lbl">0</span></label>
+  <input type="range" data-id="brightness" min="-100" max="100" step="1" value="0">
+</div>
+<div class="field">
+  <label>Downscale factor <span class="v" data-id="fv-lbl">0.50</span></label>
+  <input type="range" data-id="factor" min="0.05" max="1" step="0.01" value="0.5">
+</div>
+<p class="sec">Palette</p>
+<div class="pal-preview" data-id="pal-swatches"></div>
+<div class="field">
+  <select data-id="palette">
+    <option value="Palette1High">Palette 1 High — Cyan, Magenta, White</option>
+    <option value="Palette1Low">Palette 1 Low — Cyan, Magenta, Lt.Gray</option>
+    <option value="Palette0High">Palette 0 High — Lt.Green, Lt.Red, Yellow</option>
+    <option value="Palette0Low">Palette 0 Low — Green, Red, Brown</option>
+    <option value="Palette2High">Palette 2 High — Lt.Cyan, Lt.Red, White (Mode 5)</option>
+    <option value="Palette2Low">Palette 2 Low — Cyan, Red, Lt.Gray (Mode 5)</option>
+    <option value="CGA16Color">CGA 16-Color (160x100 / text mode)</option>
+    <option value="Old-HighIntensity">Old-HighIntensity</option>
+    <option value="Old-LowIntensity">Old-LowIntensity</option>
+    <option value="Old-RedCGA">Old-RedCGA</option>
+  </select>
+</div>
+<p class="sec">Processing</p>
+<div class="field">
+  <label>Dither</label>
+  <select data-id="dither">
+    <optgroup label="Ordered / Bayer (JS)">
+      <option value="js:bayer2">Bayer 2x2 (coarse)</option>
+      <option value="js:bayer4">Bayer 4x4 (classic)</option>
+      <option value="js:bayer8">Bayer 8x8 (fine)</option>
+      <option value="js:bayer16">Bayer 16x16 (very fine)</option>
+      <option value="js:cluster4">Cluster dot 4x4</option>
+      <option value="js:cluster8">Cluster dot 8x8</option>
+    </optgroup>
+    <optgroup label="Error diffusion (IM native)">
+      <option value="im:FloydSteinberg">Floyd-Steinberg</option>
+      <option value="im:Riemersma">Riemersma</option>
+    </optgroup>
+    <optgroup label="None">
+      <option value="none" selected>None (nearest colour)</option>
+    </optgroup>
+  </select>
+</div>
+<div class="field">
+  <label>Quantize colorspace</label>
+  <select data-id="quantizeCS">
+    <option value="CIELab" selected>CIELab (perceptually uniform)</option>
+    <option value="LCHab">LCHab (hue-aware perceptual)</option>
+    <option value="sRGB">sRGB (IM default)</option>
+    <option value="Transparent">Transparent (preserves alpha)</option>
+    <option value="YCbCr">YCbCr (luma-weighted)</option>
+  </select>
+</div>
+<div class="field">
+  <label>Pre-sharpen</label>
+  <select data-id="sharpen">
+    <option value="none">None</option>
+    <option value="mild">Mild (0x1 unsharp)</option>
+    <option value="strong" selected>Strong (0x2 unsharp)</option>
+  </select>
+</div>
+<div class="field">
+  <label>Resize filter</label>
+  <select data-id="filter">
+    <option>Point</option><option>Lanczos</option>
+    <option selected>Box</option><option>Cubic</option>
+    <option>Triangle</option><option>LanczosSharp</option>
+  </select>
+</div>
+<div class="field">
+  <label>Processing path</label>
+  <select data-id="path">
+    <option value="FirstDownscale">Downscale -> Recolor -> Upscale</option>
+    <option value="FirstRecolor">Recolor -> Downscale -> Upscale</option>
+  </select>
+</div>
+<p class="sec">Output</p>
+<button class="btn pri"  data-id="dl-btn"    disabled>Download result</button>
+<button class="btn"      data-id="batch-btn">Save batch as ZIP</button>
+<div class="batch-prog"  data-id="batch-prog"></div>`;
+
+// Inject into both containers
+const sbScroll = document.getElementById('sb-scroll');
+const shScroll = document.getElementById('sh-scroll');
+sbScroll.innerHTML = CTRL_HTML;
+shScroll.innerHTML = CTRL_HTML;
+
+// ── Panel state manager ───────────────────────────────────────────────────────
+// Values live in plain JS; both DOM sets are kept in sync on change.
+const state = {
+  brightness:'0', factor:'0.5', palette:'Palette1High',
+  dither:'none', quantizeCS:'CIELab', sharpen:'strong', filter:'Box', path:'FirstDownscale'
+};
+
+function qall(id){ return [...document.querySelectorAll(`[data-id="${id}"]`)];}
+function qget(id){ const el=document.querySelector(`[data-id="${id}"]`); return el?el.value:null; }
+function qset(id,v){ qall(id).forEach(el=>{el.value=v;}); }
+function qdisable(id,d){ qall(id).forEach(el=>{el.disabled=d;}); }
+function qtext(id,t){ qall(id).forEach(el=>{el.textContent=t;}); }
+function qprop(id,p,v){ qall(id).forEach(el=>{el[p]=v;}); }
+
+function syncSwatches(){
+  const colors=PALETTES[qget('palette')]||[];
+  qall('pal-swatches').forEach(strip=>{
+    strip.innerHTML='';
+    colors.forEach(([r,g,b])=>{
+      const s=document.createElement('span');
+      s.style.background=`rgb(${r},${g},${b})`;
+      strip.appendChild(s);
+    });
+  });
+}
+
+// DOM refs
+const pill=document.getElementById('pill');
+const fileInput=document.getElementById('file-input');
+const dropZone=document.getElementById('drop-zone');
+const outImg=document.getElementById('out-img');
+const cmpHint=document.getElementById('cmp-hint');
+const overlay=document.getElementById('overlay');
+const sheet=document.getElementById('sheet');
+const mobDl=document.getElementById('mob-dl');
+const mobBatch=document.getElementById('mob-batch');
+const mobConvert=document.getElementById('mob-convert');
+const mobSettings=document.getElementById('mob-settings');
+const sheetX=document.getElementById('sheet-x');
+
+let curBuf=null,curName='',lastBlob=null,queued=[],storedFilter='Box';
+
+// ── Status pill ───────────────────────────────────────────────────────────────
+function setPill(msg,cls=''){pill.textContent=msg;pill.className=cls;}
+
+// ── Sheet ─────────────────────────────────────────────────────────────────────
+function openSheet(){sheet.classList.add('up');overlay.classList.add('up');}
+function closeSheet(){sheet.classList.remove('up');overlay.classList.remove('up');}
+mobSettings.addEventListener('click',openSheet);
+overlay.addEventListener('click',closeSheet);
+sheetX.addEventListener('click',closeSheet);
+// swipe down to close
+let ty0=0;
+sheet.addEventListener('touchstart',e=>{ty0=e.touches[0].clientY;},{passive:true});
+sheet.addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-ty0>60)closeSheet();},{passive:true});
+
+// ── Debounce ──────────────────────────────────────────────────────────────────
+function debounce(fn,ms=300){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+const liveConvert=debounce(()=>{if(curBuf)runConversion(false);},350);
+
+// ── Filter sync ───────────────────────────────────────────────────────────────
+let lastPath = qget('path');
+function syncFilter(){
+  const curPath = qget('path');
+  if(curPath === 'FirstRecolor'){
+    const cur=qget('filter');if(cur!=='Point')storedFilter=cur;
+    qset('filter','Point');qdisable('filter',true);
+  } else {
+    qdisable('filter',false);
+    // Only restore storedFilter when transitioning away from FirstRecolor
+    if(lastPath === 'FirstRecolor' && storedFilter && storedFilter !== 'Point'){
+      qset('filter',storedFilter);
     }
+  }
+  lastPath = curPath;
+}
 
-    const placeholderURL = 'https://upload.wikimedia.org/wikipedia/commons/8/83/LCH_Gradient_Example.png';
-
-    const fileInput        = document.getElementById('file');
-    const loadExampleBtn   = document.getElementById('loadExample');
-    const fileListEl       = document.getElementById('fileList');
-    const statusEl         = document.getElementById('status');
-    const batchProgressEl  = document.getElementById('batchProgress');
-    const brightnessInput  = document.getElementById('brightness');
-    const brightnessVal    = document.getElementById('brightnessVal');
-    const factorInput      = document.getElementById('factor');
-    const factorVal        = document.getElementById('factorVal');
-    const paletteSelect    = document.getElementById('palette');
-    const ditherSelect     = document.getElementById('dither');
-    const quantizeCSSelect = document.getElementById('quantizeCS');
-    const sharpenSelect    = document.getElementById('sharpen');
-    const filterSelect     = document.getElementById('filter');
-    const pathSelect       = document.getElementById('path');
-    const convertBtn       = document.getElementById('convert');
-    const downloadBtn      = document.getElementById('download');
-    const saveBatchBtn     = document.getElementById('saveBatch');
-    const outputImg        = document.getElementById('output');
-
-    let currentFileBuffer = null;
-    let currentFileName   = '';
-    let lastOutputBlob    = null;
-    let queuedFiles       = [];
-    let storedFilter      = filterSelect.value;
-
-    // =========================================================================
-    // Palette definitions
-    // All hex values sourced directly from the canonical CGA colour table on
-    // the Wikipedia "Color Graphics Adapter" article:
-    //
-    //   320x200 Mode 4 — two hardware palettes, each with a low/high-intensity
-    //   variant. The background (colour 0) defaults to black but can be any of
-    //   the 16 CGA colours; here we default to black as per BIOS initialisation.
-    //
-    //   Palette 0  (green / red / brown):
-    //     Low:  #000000  #00AA00  #AA0000  #AA5500
-    //     High: #000000  #55FF55  #FF5555  #FFFF55
-    //
-    //   Palette 1  (cyan / magenta / white) — the "classic CGA" look:
-    //     Low:  #000000  #00AAAA  #AA00AA  #AAAAAA
-    //     High: #000000  #55FFFF  #FF55FF  #FFFFFF
-    //
-    //   320x200 Mode 5 — colour burst disabled; on a composite monitor this
-    //   produces greyscale, but on an RGBI monitor it yields a third palette
-    //   not officially documented by IBM (used by some software nonetheless):
-    //     Low:  #000000  #00AAAA  #AA0000  #AAAAAA
-    //     High: #000000  #55FFFF  #FF5555  #FFFFFF
-    //
-    //   160x100 / text modes — full 16-colour CGA palette available.
-    // =========================================================================
-    const PALETTES = {
-
-      // --- Mode 4, Palette 1 (the classic cyan/magenta CGA look) ---------------
-      'Palette1High': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x55,0xFF,0xFF,0xFF], // #55FFFF  light cyan
-        [0xFF,0x55,0xFF,0xFF], // #FF55FF  light magenta
-        [0xFF,0xFF,0xFF,0xFF], // #FFFFFF  white
-      ],
-      'Palette1Low': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x00,0xAA,0xAA,0xFF], // #00AAAA  cyan
-        [0xAA,0x00,0xAA,0xFF], // #AA00AA  magenta
-        [0xAA,0xAA,0xAA,0xFF], // #AAAAAA  light gray
-      ],
-
-      // --- Mode 4, Palette 0 (green/red/brown) ----------------------------------
-      'Palette0High': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x55,0xFF,0x55,0xFF], // #55FF55  light green
-        [0xFF,0x55,0x55,0xFF], // #FF5555  light red
-        [0xFF,0xFF,0x55,0xFF], // #FFFF55  yellow
-      ],
-      'Palette0Low': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x00,0xAA,0x00,0xFF], // #00AA00  green
-        [0xAA,0x00,0x00,0xFF], // #AA0000  red
-        [0xAA,0x55,0x00,0xFF], // #AA5500  brown
-      ],
-
-      // --- Mode 5 / "Palette 2" (cyan/red/white; RGBI only, undocumented) ------
-      'Palette2High': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x55,0xFF,0xFF,0xFF], // #55FFFF  light cyan
-        [0xFF,0x55,0x55,0xFF], // #FF5555  light red
-        [0xFF,0xFF,0xFF,0xFF], // #FFFFFF  white
-      ],
-      'Palette2Low': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x00,0xAA,0xAA,0xFF], // #00AAAA  cyan
-        [0xAA,0x00,0x00,0xFF], // #AA0000  red
-        [0xAA,0xAA,0xAA,0xFF], // #AAAAAA  light gray
-      ],
-
-      // --- Full 16-colour palette (160x100 low-res mode / text modes) ----------
-      'CGA16Color': [
-        [0x00,0x00,0x00,0xFF], // #000000  black
-        [0x00,0x00,0xAA,0xFF], // #0000AA  blue
-        [0x00,0xAA,0x00,0xFF], // #00AA00  green
-        [0x00,0xAA,0xAA,0xFF], // #00AAAA  cyan
-        [0xAA,0x00,0x00,0xFF], // #AA0000  red
-        [0xAA,0x00,0xAA,0xFF], // #AA00AA  magenta
-        [0xAA,0x55,0x00,0xFF], // #AA5500  brown
-        [0xAA,0xAA,0xAA,0xFF], // #AAAAAA  light gray
-        [0x55,0x55,0x55,0xFF], // #555555  dark gray
-        [0x55,0x55,0xFF,0xFF], // #5555FF  light blue
-        [0x55,0xFF,0x55,0xFF], // #55FF55  light green
-        [0x55,0xFF,0xFF,0xFF], // #55FFFF  light cyan
-        [0xFF,0x55,0x55,0xFF], // #FF5555  light red
-        [0xFF,0x55,0xFF,0xFF], // #FF55FF  light magenta
-        [0xFF,0xFF,0x55,0xFF], // #FFFF55  yellow
-        [0xFF,0xFF,0xFF,0xFF], // #FFFFFF  white
-      ],
-
-      // --- Legacy entries (prefixed "Old-") ------------------------------------
-      // These were in the original tool but do not correspond to any documented
-      // CGA hardware palette. Kept here for compatibility.
-      'Old-HighIntensity': [
-        [0x00,0x00,0x00,0xFF], // black
-        [0x55,0xFF,0xFF,0xFF], // bright cyan
-        [0xFF,0x55,0xFF,0xFF], // bright magenta
-        [0xFF,0xFF,0xFF,0xFF], // white
-      ],
-      'Old-LowIntensity': [
-        [0x00,0x00,0x00,0xFF], // black
-        [0x00,0xAA,0xAA,0xFF], // cyan
-        [0xAA,0x00,0xAA,0xFF], // magenta
-        [0xAA,0xAA,0xAA,0xFF], // light gray
-      ],
-      'Old-RedCGA': [
-        [0x00,0x00,0x00,0xFF], // black
-        [0xAA,0x00,0x00,0xFF], // red
-        [0xAA,0x55,0x00,0xFF], // brown
-        [0xFF,0xFF,0xFF,0xFF], // white
-      ],
+// ── Control wiring ────────────────────────────────────────────────────────────
+['brightness','factor','palette','dither','quantizeCS','sharpen','filter','path'].forEach(id=>{
+  qall(id).forEach(el=>{
+    const onChange=e=>{
+      // mirror value to the sibling panel element
+      qall(id).forEach(o=>{if(o!==e.target)o.value=e.target.value;});
+      // update display labels
+      if(id==='brightness') qtext('bv-lbl',e.target.value);
+      if(id==='factor')     qtext('fv-lbl',Number(e.target.value).toFixed(2));
+      if(id==='palette')    syncSwatches();
+      // Track user's filter choice so syncFilter doesn't overwrite it
+      if(id==='filter' && qget('path')!=='FirstRecolor') storedFilter=e.target.value;
+      syncFilter(); liveConvert();
     };
+    el.addEventListener('input',onChange);
+    el.addEventListener('change',onChange);
+  });
+});
 
-    // =========================================================================
+// Browse + example
+qall('browse-btn').forEach(el=>el.addEventListener('click',()=>fileInput.click()));
+qall('example-btn').forEach(el=>el.addEventListener('click',loadExample));
+document.getElementById('dz-browse').addEventListener('click',()=>fileInput.click());
+document.getElementById('dz-example').addEventListener('click',loadExample);
+dropZone.addEventListener('click',e=>{if(!e.target.closest('button'))fileInput.click();});
 
-    function debounce(fn, wait = 300) {
-      let t = null;
-      return (...args) => { if (t) clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
-    }
+// DnD
+const cw=document.getElementById('cw');
+['dragenter','dragover'].forEach(ev=>cw.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.add('over');}));
+['dragleave','dragend'].forEach(ev=>cw.addEventListener(ev,()=>dropZone.classList.remove('over')));
+cw.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');ingestFiles(e.dataTransfer.files);});
+fileInput.addEventListener('change',e=>ingestFiles(e.target.files));
 
-    function syncFilterEnable() {
-      if (pathSelect.value === 'FirstRecolor') {
-        if (filterSelect.value !== 'Point') storedFilter = filterSelect.value;
-        filterSelect.value = 'Point';
-        filterSelect.disabled = true;
-      } else {
-        filterSelect.disabled = false;
-        if (storedFilter && storedFilter !== 'Point') filterSelect.value = storedFilter;
-      }
-    }
+// Download + batch
+qall('dl-btn').forEach(el=>el.addEventListener('click',doDownload));
+qall('batch-btn').forEach(el=>el.addEventListener('click',doBatch));
+mobDl.addEventListener('click',doDownload);
+mobBatch.addEventListener('click',doBatch);
+mobConvert.addEventListener('click',()=>runConversion(true));
 
-    brightnessInput.addEventListener('input', () => {
-      brightnessVal.textContent = brightnessInput.value;
-    });
+// ── File ingestion ────────────────────────────────────────────────────────────
+async function ingestFiles(files){
+  if(!files||!files.length)return;
+  queued=[];
+  for(const f of files)queued.push({name:f.name,arrayBuffer:await f.arrayBuffer()});
+  fileInput.value='';renderFileList();selectFile(queued[0].arrayBuffer,queued[0].name);
+}
 
-    factorInput.addEventListener('input', () => {
-      factorVal.textContent = Number(factorInput.value).toFixed(2);
-    });
+async function loadExample(){
+  try{
+    setPill('Loading...','busy');
+    const ab=await(await fetch(PLACEHOLDER)).arrayBuffer();
+    queued=[{name:'gradient.png',arrayBuffer:ab}];
+    fileInput.value='';renderFileList();selectFile(ab,'gradient.png');
+    runConversion(false);
+  }catch(e){setPill('Load failed','err');}
+}
 
-    const liveUpdate = debounce(() => { if (currentFileBuffer) runConversion(false); }, 300);
-
-    [brightnessInput, factorInput, paletteSelect, ditherSelect, quantizeCSSelect, sharpenSelect, pathSelect].forEach(el => {
-      el.addEventListener('change', () => { syncFilterEnable(); liveUpdate(); });
-      el.addEventListener('input',  () => { syncFilterEnable(); liveUpdate(); });
-    });
-    filterSelect.addEventListener('change', () => {
-      if (pathSelect.value !== 'FirstRecolor') { storedFilter = filterSelect.value; liveUpdate(); }
-    });
-
-    fileInput.addEventListener('change', async (ev) => {
-      const files = ev.target.files;
-      if (!files || !files.length) return;
-      queuedFiles = [];
-      for (const f of files) queuedFiles.push({ name: f.name, arrayBuffer: await f.arrayBuffer() });
-      fileInput.value = '';
-      renderFileList();
-      const first = queuedFiles[0];
-      if (first) selectFile(first.arrayBuffer, first.name);
-    });
-
-    loadExampleBtn.addEventListener('click', () => loadPlaceholder());
-
-    async function loadPlaceholder() {
-      try {
-        statusEl.textContent = 'Loading placeholder...';
-        const ab = await (await fetch(placeholderURL)).arrayBuffer();
-        queuedFiles = [{ name: 'gradient.png', arrayBuffer: ab }];
-        fileInput.value = '';
-        renderFileList();
-        selectFile(ab, 'gradient.png');
-        statusEl.textContent = 'Placeholder loaded';
-        runConversion(false);
-      } catch (err) {
-        console.error('Error loading placeholder', err);
-        statusEl.textContent = 'Error loading placeholder';
-      }
-    }
-
-    function renderFileList() {
-      if (!queuedFiles.length) { fileListEl.innerHTML = 'No files selected'; return; }
-      fileListEl.innerHTML = '';
-      queuedFiles.forEach((f, idx) => {
-        const row = document.createElement('div');
-        row.className = 'file-row';
-        const left = document.createElement('div');
-        left.textContent = f.name;
-        const right = document.createElement('div');
-        const previewBtn = document.createElement('button');
-        previewBtn.textContent = 'Preview';
-        previewBtn.onclick = () => selectFile(f.arrayBuffer, f.name);
-        const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'Remove';
-        removeBtn.onclick = () => {
-          queuedFiles.splice(idx, 1);
-          renderFileList();
-          if (!queuedFiles.length) { loadPlaceholder(); }
-          else if (currentFileName === f.name) selectFile(queuedFiles[0].arrayBuffer, queuedFiles[0].name);
-        };
-        right.appendChild(previewBtn);
-        right.appendChild(removeBtn);
-        row.appendChild(left);
-        row.appendChild(right);
-        fileListEl.appendChild(row);
-      });
-    }
-
-    function selectFile(ab, name) {
-      currentFileBuffer = ab;
-      currentFileName   = name;
-      outputImg.src     = URL.createObjectURL(new Blob([ab]));
-      lastOutputBlob    = null;
-      downloadBtn.disabled = true;
-      statusEl.textContent = `Selected ${name}`;
-      runConversion(false);
-    }
-
-    async function buildPalettePNG(paletteName) {
-      const colors  = PALETTES[paletteName] || PALETTES['Palette1High'];
-      const canvas  = document.createElement('canvas');
-      canvas.width  = colors.length;
-      canvas.height = 1;
-      const ctx  = canvas.getContext('2d');
-      const imgd = ctx.createImageData(colors.length, 1);
-      for (let i = 0; i < colors.length; i++) {
-        imgd.data[i*4+0] = colors[i][0];
-        imgd.data[i*4+1] = colors[i][1];
-        imgd.data[i*4+2] = colors[i][2];
-        imgd.data[i*4+3] = colors[i][3];
-      }
-      ctx.putImageData(imgd, 0, 0);
-      return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
-    }
-
-    function extractBlob(result) {
-      const tryFile = f => {
-        if (!f) return null;
-        if (f.blob instanceof Blob)  return f.blob;
-        if (f.contents) return new Blob([f.contents], { type: 'image/png' });
-        if (f.content)  return new Blob([f.content],  { type: 'image/png' });
-        if (f.data)     return new Blob([f.data],      { type: 'image/png' });
-        return null;
+function renderFileList(){
+  qall('flist').forEach(listEl=>{
+    if(!queued.length){listEl.innerHTML='<div class="flist-empty">No files selected</div>';return;}
+    listEl.innerHTML='';
+    queued.forEach((f,idx)=>{
+      const row=document.createElement('div');row.className='frow';
+      const nm=document.createElement('span');nm.className='frow-name';nm.textContent=f.name;
+      const pr=document.createElement('button');pr.className='btn sm';pr.textContent='▶';pr.title='Preview';
+      pr.onclick=()=>selectFile(f.arrayBuffer,f.name);
+      const rm=document.createElement('button');rm.className='btn sm danger';rm.textContent='✕';rm.title='Remove';
+      rm.onclick=()=>{
+        queued.splice(idx,1);renderFileList();
+        if(!queued.length){dropZone.classList.remove('gone');outImg.classList.remove('show');cmpHint.classList.remove('show');curBuf=null;setPill('No file','');}
+        else if(curName===f.name)selectFile(queued[0].arrayBuffer,queued[0].name);
       };
-      if (!result) return null;
-      if (result.outputFiles?.length) {
-        return tryFile(result.outputFiles.find(x => x.name?.toLowerCase().endsWith('.png')) || result.outputFiles[0]);
-      }
-      if (result.processedFiles?.length) return tryFile(result.processedFiles[0]);
-      if (Array.isArray(result) && result.length) {
-        return tryFile(result.find(x => x.name?.toLowerCase().endsWith('.png')) || result[0]);
-      }
-      return null;
-    }
-
-    // =========================================================================
-    // Dithering
-    //
-    // wasm-imagemagick ships IM 7.0.8-28 which supports only three -dither
-    // values: None, Riemersma, FloydSteinberg.  -dither Ordered and all Bayer
-    // / halftone -ordered-dither patterns are NOT compiled into this build
-    // (only "threshold" and "checks" are present in its thresholds.xml).
-    //
-    // Solution: Bayer / cluster-dot dithering is implemented here in JS using
-    // the Canvas API.  We apply it to the image *before* passing to IM, then
-    // tell IM to use -dither None -remap so it just does a nearest-colour snap
-    // onto the pre-dithered signal.  This gives us any matrix we want.
-    //
-    // For Floyd-Steinberg / Riemersma we skip the JS pass and let IM handle it
-    // natively as before.
-    // =========================================================================
-
-    // --- Bayer matrix generation (recursive) ---------------------------------
-    function bayerMatrix(n) {
-      // Returns a flat Float32Array of n×n values normalised to [0,1)
-      if (n === 1) return new Float32Array([0]);
-      const half = bayerMatrix(n / 2);
-      const size = n * n;
-      const m = new Float32Array(size);
-      const h = n / 2;
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < h; x++) {
-          const v = half[y * h + x];          // base value in [0,1)
-          const scaled = v / 4;
-          m[(y    ) * n + (x    )] = scaled + 0/4;  // top-left
-          m[(y    ) * n + (x + h)] = scaled + 2/4;  // top-right
-          m[(y + h) * n + (x    )] = scaled + 3/4;  // bottom-left
-          m[(y + h) * n + (x + h)] = scaled + 1/4;  // bottom-right
-        }
-      }
-      return m;
-    }
-
-    // --- 4×4 cluster-dot (print-style) matrix --------------------------------
-    // Approximates a circular dot cluster; looks like old magazine halftones.
-    const CLUSTER4 = new Float32Array([
-       12, 5, 6, 13,
-        4, 0, 1,  7,
-       11, 3, 2,  8,
-       15,10, 9, 14
-    ].map(v => v / 16));
-
-    const CLUSTER8 = (() => {
-      // 8×8 cluster-dot pattern (classic Knuth / Ulichney)
-      const raw = [
-        24,10,12,26,35,47,49,37,
-         8, 0, 2,14,45,59,61,51,
-        22, 6, 4,16,43,57,63,53,
-        30,20,18,28,33,41,55,39,
-        34,46,48,36,25,11,13,27,
-        44,58,60,50, 9, 1, 3,15,
-        42,56,62,52,23, 7, 5,17,
-        32,40,54,38,31,21,19,29
-      ];
-      return new Float32Array(raw.map(v => v / 64));
-    })();
-
-    const BAYER_CACHE = {};
-    function getBayer(n) {
-      if (!BAYER_CACHE[n]) BAYER_CACHE[n] = bayerMatrix(n);
-      return BAYER_CACHE[n];
-    }
-
-    // --- Palette nearest-colour in linear RGB --------------------------------
-    function buildLinearPalette(palName) {
-      const srgb = PALETTES[palName] || PALETTES['Palette1High'];
-      return srgb.map(([r, g, b]) => [
-        Math.pow(r / 255, 2.2),
-        Math.pow(g / 255, 2.2),
-        Math.pow(b / 255, 2.2),
-      ]);
-    }
-
-    function nearestPaletteColor(lr, lg, lb, linearPalette) {
-      let bestD = Infinity, bestIdx = 0;
-      for (let i = 0; i < linearPalette.length; i++) {
-        const [pr, pg, pb] = linearPalette[i];
-        const d = (lr-pr)**2 + (lg-pg)**2 + (lb-pb)**2;
-        if (d < bestD) { bestD = d; bestIdx = i; }
-      }
-      return linearPalette[bestIdx];
-    }
-
-    // --- JS ordered dithering ------------------------------------------------
-    // Applies threshold-matrix dithering directly to imageData pixels.
-    // Works in linear light to avoid gamma-skewed thresholds.
-    function applyOrderedDither(imageData, matrix, matrixSize, linearPalette) {
-      const d = imageData.data;
-      const w = imageData.width, h = imageData.height;
-      // Strength: how much of the threshold to apply (1.0 = full range between
-      // two palette entries; tuned per matrix size)
-      const spread = 0.8;
-
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4;
-          // sRGB → linear
-          const lr = Math.pow(d[i  ] / 255, 2.2);
-          const lg = Math.pow(d[i+1] / 255, 2.2);
-          const lb = Math.pow(d[i+2] / 255, 2.2);
-
-          // Threshold from matrix (centred: -0.5 … +0.5)
-          const t = (matrix[(y % matrixSize) * matrixSize + (x % matrixSize)] - 0.5) * spread;
-
-          // Apply threshold bias
-          const lr2 = Math.max(0, Math.min(1, lr + t));
-          const lg2 = Math.max(0, Math.min(1, lg + t));
-          const lb2 = Math.max(0, Math.min(1, lb + t));
-
-          // Snap to nearest palette colour (in linear space)
-          const [pr, pg, pb] = nearestPaletteColor(lr2, lg2, lb2, linearPalette);
-
-          // linear → sRGB
-          d[i  ] = Math.round(Math.pow(pr, 1/2.2) * 255);
-          d[i+1] = Math.round(Math.pow(pg, 1/2.2) * 255);
-          d[i+2] = Math.round(Math.pow(pb, 1/2.2) * 255);
-          // alpha unchanged
-        }
-      }
-    }
-
-    // Returns an ArrayBuffer of a PNG for the given imageData after JS dithering,
-    // or null if dither mode is an IM-native one.
-    async function applyJsDither(inArrayBuffer, targetW, targetH, filterVal) {
-      const ditherVal = ditherSelect.value;
-      if (!ditherVal.startsWith('js:')) return null; // IM handles it
-
-      // Decode the source image to a canvas at the target (downscaled) size
-      const blob    = new Blob([inArrayBuffer]);
-      const bmp     = await createImageBitmap(blob, { resizeWidth: targetW, resizeHeight: targetH,
-                                                       resizeQuality: filterVal === 'Point' ? 'pixelated' : 'high' });
-      const canvas  = document.createElement('canvas');
-      canvas.width  = targetW; canvas.height = targetH;
-      const ctx     = canvas.getContext('2d');
-      ctx.drawImage(bmp, 0, 0);
-      bmp.close();
-
-      // Optional pre-sharpen via a simple convolution isn't practical here;
-      // we rely on the IM unsharp pass instead (which runs before us in the
-      // FirstDownscale path, after us in FirstRecolor — see buildCmd).
-
-      const imageData    = ctx.getImageData(0, 0, targetW, targetH);
-
-      // Apply brightness before dithering.
-      // Value is -100…+100; we add it as a direct offset in linear light.
-      const bv = parseInt(brightnessInput.value, 10);
-      if (bv !== 0) {
-        const bLinear = Math.pow(Math.abs(bv) / 100, 2.2) * Math.sign(bv);
-        const dd = imageData.data;
-        for (let i = 0; i < dd.length; i += 4) {
-          for (let c = 0; c < 3; c++) {
-            const lin = Math.pow(dd[i+c] / 255, 2.2) + bLinear;
-            dd[i+c] = Math.round(Math.pow(Math.max(0, Math.min(1, lin)), 1/2.2) * 255);
-          }
-        }
-      }
-
-      const linearPalette = buildLinearPalette(paletteSelect.value);
-
-      let matrix, size;
-      switch (ditherVal) {
-        case 'js:bayer2':   matrix = getBayer(2);  size = 2;  break;
-        case 'js:bayer4':   matrix = getBayer(4);  size = 4;  break;
-        case 'js:bayer8':   matrix = getBayer(8);  size = 8;  break;
-        case 'js:bayer16':  matrix = getBayer(16); size = 16; break;
-        case 'js:cluster4': matrix = CLUSTER4;     size = 4;  break;
-        case 'js:cluster8': matrix = CLUSTER8;     size = 8;  break;
-        default:            matrix = getBayer(4);  size = 4;
-      }
-
-      applyOrderedDither(imageData, matrix, size, linearPalette);
-      ctx.putImageData(imageData, 0, 0);
-
-      return new Promise(resolve => canvas.toBlob(b => {
-        b.arrayBuffer().then(ab => resolve(ab));
-      }, 'image/png'));
-    }
-
-    // =========================================================================
-    // ImageMagick command builder
-    // =========================================================================
-    function buildSharpenArgs(sharpenVal) {
-      if (sharpenVal === 'mild')   return ['-unsharp', '0x1'];
-      if (sharpenVal === 'strong') return ['-unsharp', '0x2'];
-      return [];
-    }
-
-    function buildBrightnessArgs() {
-      const bv = parseInt(brightnessInput.value, 10);
-      if (bv === 0) return [];
-      // IM -brightness-contrast takes a value in -100…+100 for brightness
-      return ['-brightness-contrast', `${bv}x0`];
-    }
-
-    // Builds the IM command.  For JS-dithered modes the image arriving at IM is
-    // already dithered and exactly the target size, so we only need remap+upscale.
-    function buildCmd(origW, origH, newW, newH, filterVal, pathVal, isJsDither) {
-      const sharpenArgs   = buildSharpenArgs(sharpenSelect.value);
-      const brightnessArgs = buildBrightnessArgs();
-      const qcs           = quantizeCSSelect.value;
-      const quantizeArgs  = ['-quantize', qcs];
-
-      if (isJsDither) {
-        // Brightness was already applied in JS canvas pass; just remap + upscale.
-        return [
-          'convert', 'in.png',
-          ...quantizeArgs,
-          '-dither', 'None', '-remap', 'palette.png',
-          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
-          'out.png'
-        ];
-      }
-
-      const ditherVal  = ditherSelect.value;
-      const imDither   = ditherVal === 'none'              ? 'None'
-                       : ditherVal === 'im:FloydSteinberg' ? 'FloydSteinberg'
-                       :                                     'Riemersma';
-      const ditherArgs = ['-dither', imDither];
-
-      if (pathVal === 'FirstDownscale') {
-        return [
-          'convert', 'in.png',
-          ...brightnessArgs,
-          '-filter', filterVal, '-resize', `${newW}x${newH}!`,
-          ...sharpenArgs,
-          ...quantizeArgs,
-          ...ditherArgs, '-remap', 'palette.png',
-          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
-          'out.png'
-        ];
-      } else {
-        return [
-          'convert', 'in.png',
-          ...brightnessArgs,
-          ...sharpenArgs,
-          ...quantizeArgs,
-          ...ditherArgs, '-remap', 'palette.png',
-          '-filter', filterVal, '-resize', `${newW}x${newH}!`,
-          '-filter', 'Point', '-resize', `${origW}x${origH}!`,
-          'out.png'
-        ];
-      }
-    }
-
-    async function runMagick(inArrayBuffer) {
-      const palName    = paletteSelect.value;
-      const filterVal  = pathSelect.value === 'FirstRecolor' ? 'Point' : filterSelect.value;
-
-      // Measure source dimensions
-      const img    = new Image();
-      const tmpUrl = URL.createObjectURL(new Blob([inArrayBuffer]));
-      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = tmpUrl; });
-      const origW = img.naturalWidth || 1, origH = img.naturalHeight || 1;
-      URL.revokeObjectURL(tmpUrl);
-
-      const factor = parseFloat(factorInput.value);
-      const newW   = Math.max(1, Math.round(origW * factor));
-      const newH   = Math.max(1, Math.round(origH * factor));
-
-      // For JS-dither modes, we pre-process the image in the browser
-      const isJsDither = ditherSelect.value.startsWith('js:');
-      let workBuffer = inArrayBuffer;
-
-      if (isJsDither) {
-        const dithered = await applyJsDither(inArrayBuffer, newW, newH, filterVal);
-        if (dithered) workBuffer = dithered;
-      }
-
-      const paletteBlob = await buildPalettePNG(palName);
-      const cmdArray    = buildCmd(origW, origH, newW, newH, filterVal, pathSelect.value, isJsDither);
-
-      const u8in  = new Uint8Array(workBuffer);
-      const u8pal = new Uint8Array(await paletteBlob.arrayBuffer());
-      const inputFiles = [
-        { name: 'in.png',      content: u8in,  blob: u8in  },
-        { name: 'palette.png', content: u8pal, blob: u8pal },
-      ];
-
-      let result;
-      if (typeof Magick.execute === 'function') {
-        result = await Magick.execute({
-          inputFiles: inputFiles.map(f => ({ name: f.name, content: f.content })),
-          commands: [cmdArray.join(' ')],
-        });
-      } else if (typeof Magick.Call === 'function') {
-        result = await Magick.Call(inputFiles.map(f => ({ name: f.name, blob: f.blob })), cmdArray);
-      } else {
-        throw new Error('No ImageMagick API available');
-      }
-
-      const outBlob = extractBlob(result);
-      if (!outBlob) throw new Error('No output blob from ImageMagick');
-      return outBlob;
-    }
-
-    async function runConversion(disableBtns = true) {
-      if (!currentFileBuffer) { statusEl.textContent = 'No file selected'; return; }
-      try {
-        if (disableBtns) convertBtn.disabled = true;
-        statusEl.textContent = 'Converting...';
-        const blob = await runMagick(currentFileBuffer);
-        lastOutputBlob = blob;
-        outputImg.src  = URL.createObjectURL(blob);
-        downloadBtn.disabled = false;
-        statusEl.textContent = 'Done.';
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = 'Error: ' + (err.message || err);
-      } finally {
-        if (disableBtns) convertBtn.disabled = false;
-      }
-    }
-
-    convertBtn.addEventListener('click', () => runConversion(true));
-
-    downloadBtn.addEventListener('click', () => {
-      if (!lastOutputBlob) return;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(lastOutputBlob);
-      a.download = (currentFileName ? currentFileName.replace(/\.[^.]+$/, '') : 'out') + '-cga.png';
-      document.body.appendChild(a); a.click(); a.remove();
+      row.append(nm,pr,rm);listEl.appendChild(row);
     });
+  });
+}
 
-    saveBatchBtn.addEventListener('click', async () => {
-      if (!queuedFiles.length) { statusEl.textContent = 'No files queued for batch'; return; }
-      saveBatchBtn.disabled = true;
-      batchProgressEl.textContent = 'Loading JSZip...';
-      const JSZipLib = await loadJSZip();
-      const zip = new JSZipLib();
-      for (let i = 0; i < queuedFiles.length; i++) {
-        const f = queuedFiles[i];
-        batchProgressEl.textContent = `Processing ${i+1}/${queuedFiles.length}: ${f.name}`;
-        try {
-          const arr = await (await runMagick(f.arrayBuffer)).arrayBuffer();
-          zip.file(f.name.replace(/\.[^.]+$/, '') + '-cga.png', arr);
-        } catch (err) {
-          console.error('Batch error:', f.name, err);
-          zip.file(f.name + '-error.txt', 'Error: ' + (err.message || err));
-        }
-      }
-      batchProgressEl.textContent = 'Generating ZIP...';
-      const content = await zip.generateAsync({ type: 'blob' },
-        meta => { batchProgressEl.textContent = `Zipping: ${Math.round(meta.percent)}%`; });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(content);
-      a.download = 'cga-batch.zip';
-      document.body.appendChild(a); a.click(); a.remove();
-      batchProgressEl.textContent = `Done: ${queuedFiles.length} files.`;
-      saveBatchBtn.disabled = false;
-    });
+function selectFile(ab,name){
+  curBuf=ab;curName=name;
+  dropZone.classList.add('gone');
+  outImg.src=URL.createObjectURL(new Blob([ab]));
+  outImg.classList.add('show');cmpHint.classList.add('show');
+  lastBlob=null;setDlDisabled(true);setPill(name,'');runConversion(false);
+}
 
-    // Hold to preview original image
-    let isPointerDown = false, isDragging = false, startX = 0, startY = 0;
-    const DRAG_THRESHOLD = 5;
+function setDlDisabled(d){
+  qprop('dl-btn','disabled',d);mobDl.disabled=d;
+}
 
-    outputImg.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      isPointerDown = true; isDragging = false;
-      startX = e.clientX; startY = e.clientY;
-      if (currentFileBuffer) outputImg.src = URL.createObjectURL(new Blob([currentFileBuffer]));
-    });
-    outputImg.addEventListener('pointermove', (e) => {
-      if (!isPointerDown) return;
-      if (Math.abs(e.clientX-startX) > DRAG_THRESHOLD || Math.abs(e.clientY-startY) > DRAG_THRESHOLD)
-        isDragging = true;
-    });
-    outputImg.addEventListener('pointerup', () => {
-      if (isPointerDown && !isDragging && lastOutputBlob) outputImg.src = URL.createObjectURL(lastOutputBlob);
-      isPointerDown = isDragging = false;
-    });
-    outputImg.addEventListener('pointerleave', () => {
-      if (isPointerDown && lastOutputBlob) outputImg.src = URL.createObjectURL(lastOutputBlob);
-      isPointerDown = isDragging = false;
-    });
-    outputImg.addEventListener('pointercancel', () => {
-      if (isPointerDown && lastOutputBlob) outputImg.src = URL.createObjectURL(lastOutputBlob);
-      isPointerDown = isDragging = false;
-    });
-    outputImg.addEventListener('contextmenu', e => e.preventDefault());
+// ── Palette PNG ───────────────────────────────────────────────────────────────
+async function buildPalettePNG(name){
+  const colors=PALETTES[name]||PALETTES['Palette1High'];
+  const c=document.createElement('canvas');c.width=colors.length;c.height=1;
+  const ctx=c.getContext('2d'),id=ctx.createImageData(colors.length,1);
+  for(let i=0;i<colors.length;i++){id.data[i*4]=colors[i][0];id.data[i*4+1]=colors[i][1];id.data[i*4+2]=colors[i][2];id.data[i*4+3]=colors[i][3];}
+  ctx.putImageData(id,0,0);
+  return new Promise(r=>c.toBlob(r,'image/png'));
+}
 
-    window.addEventListener('load', () => loadPlaceholder());
-    syncFilterEnable();
-  </script>
+// ── Blob extractor ────────────────────────────────────────────────────────────
+function extractBlob(res){
+  const tryF=f=>{
+    if(!f)return null;
+    if(f.blob instanceof Blob)return f.blob;
+    if(f.contents)return new Blob([f.contents],{type:'image/png'});
+    if(f.content)return new Blob([f.content],{type:'image/png'});
+    if(f.data)return new Blob([f.data],{type:'image/png'});
+    return null;
+  };
+  if(!res)return null;
+  if(res.outputFiles?.length)return tryF(res.outputFiles.find(x=>x.name?.endsWith('.png'))||res.outputFiles[0]);
+  if(res.processedFiles?.length)return tryF(res.processedFiles[0]);
+  if(Array.isArray(res)&&res.length)return tryF(res.find(x=>x.name?.endsWith('.png'))||res[0]);
+  return null;
+}
+
+// ── Bayer dithering ───────────────────────────────────────────────────────────
+function bayerMatrix(n){
+  if(n===1)return new Float32Array([0]);
+  const half=bayerMatrix(n/2),h=n/2,m=new Float32Array(n*n);
+  for(let y=0;y<h;y++)for(let x=0;x<h;x++){
+    const sc=half[y*h+x]/4;
+    m[y*n+x]=sc;m[y*n+x+h]=sc+.5;m[(y+h)*n+x]=sc+.75;m[(y+h)*n+x+h]=sc+.25;
+  }
+  return m;
+}
+const CLUSTER4=new Float32Array([12,5,6,13,4,0,1,7,11,3,2,8,15,10,9,14].map(v=>v/16));
+const CLUSTER8=new Float32Array([24,10,12,26,35,47,49,37,8,0,2,14,45,59,61,51,22,6,4,16,43,57,63,53,30,20,18,28,33,41,55,39,34,46,48,36,25,11,13,27,44,58,60,50,9,1,3,15,42,56,62,52,23,7,5,17,32,40,54,38,31,21,19,29].map(v=>v/64));
+const BC={};
+function getBayer(n){if(!BC[n])BC[n]=bayerMatrix(n);return BC[n];}
+
+function buildLinearPalette(name){
+  return(PALETTES[name]||PALETTES['Palette1High']).map(([r,g,b])=>[Math.pow(r/255,2.2),Math.pow(g/255,2.2),Math.pow(b/255,2.2)]);
+}
+function nearestCol(lr,lg,lb,lp){
+  let bd=Infinity,bi=0;
+  for(let i=0;i<lp.length;i++){const d=(lr-lp[i][0])**2+(lg-lp[i][1])**2+(lb-lp[i][2])**2;if(d<bd){bd=d;bi=i;}}
+  return lp[bi];
+}
+function applyDither(imageData,mat,sz,lp){
+  const d=imageData.data,w=imageData.width,h=imageData.height,sp=0.8;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    const lr=Math.pow(d[i]/255,2.2),lg=Math.pow(d[i+1]/255,2.2),lb=Math.pow(d[i+2]/255,2.2);
+    const t=(mat[(y%sz)*sz+(x%sz)]-.5)*sp;
+    const[pr,pg,pb]=nearestCol(Math.max(0,Math.min(1,lr+t)),Math.max(0,Math.min(1,lg+t)),Math.max(0,Math.min(1,lb+t)),lp);
+    d[i]=Math.round(Math.pow(pr,1/2.2)*255);d[i+1]=Math.round(Math.pow(pg,1/2.2)*255);d[i+2]=Math.round(Math.pow(pb,1/2.2)*255);
+  }
+}
+
+async function applyJsDither(buf,tw,th,filterVal){
+  const dv=qget('dither');if(!dv.startsWith('js:'))return null;
+  const bmp=await createImageBitmap(new Blob([buf]),{resizeWidth:tw,resizeHeight:th,resizeQuality:filterVal==='Point'?'pixelated':'high'});
+  const cv=document.createElement('canvas');cv.width=tw;cv.height=th;
+  const ctx=cv.getContext('2d');ctx.drawImage(bmp,0,0);bmp.close();
+  const id=ctx.getImageData(0,0,tw,th);
+  const bv=parseInt(qget('brightness'),10);
+  if(bv!==0){
+    const bL=Math.pow(Math.abs(bv)/100,2.2)*Math.sign(bv);
+    const dd=id.data;
+    for(let i=0;i<dd.length;i+=4)for(let c=0;c<3;c++){
+      const lin=Math.pow(dd[i+c]/255,2.2)+bL;
+      dd[i+c]=Math.round(Math.pow(Math.max(0,Math.min(1,lin)),1/2.2)*255);
+    }
+  }
+  const lp=buildLinearPalette(qget('palette'));
+  let mat,sz;
+  if(dv==='js:bayer2'){mat=getBayer(2);sz=2;}
+  else if(dv==='js:bayer4'){mat=getBayer(4);sz=4;}
+  else if(dv==='js:bayer8'){mat=getBayer(8);sz=8;}
+  else if(dv==='js:bayer16'){mat=getBayer(16);sz=16;}
+  else if(dv==='js:cluster4'){mat=CLUSTER4;sz=4;}
+  else{mat=CLUSTER8;sz=8;}
+  applyDither(id,mat,sz,lp);
+  ctx.putImageData(id,0,0);
+  return new Promise(r=>cv.toBlob(b=>b.arrayBuffer().then(r),'image/png'));
+}
+
+// ── IM command builder ────────────────────────────────────────────────────────
+function sharpenArgs(){const v=qget('sharpen');if(v==='mild')return['-unsharp','0x1'];if(v==='strong')return['-unsharp','0x2'];return[];}
+function brightnessArgs(){const bv=parseInt(qget('brightness'),10);return bv===0?[]:['-brightness-contrast',`${bv}x0`];}
+
+function buildCmd(oW,oH,nW,nH,filt,path,isJs){
+  const sh=sharpenArgs(),br=brightnessArgs(),qcs=['-quantize',qget('quantizeCS')];
+  if(isJs)return['convert','in.png',...qcs,'-dither','None','-remap','palette.png','-filter','Point','-resize',`${oW}x${oH}!`,'out.png'];
+  const dv=qget('dither');
+  const imD=dv==='none'?'None':dv==='im:FloydSteinberg'?'FloydSteinberg':'Riemersma';
+  const dit=['-dither',imD];
+  if(path==='FirstDownscale')return['convert','in.png',...br,'-filter',filt,'-resize',`${nW}x${nH}!`,...sh,...qcs,...dit,'-remap','palette.png','-filter','Point','-resize',`${oW}x${oH}!`,'out.png'];
+  return['convert','in.png',...br,...sh,...qcs,...dit,'-remap','palette.png','-filter',filt,'-resize',`${nW}x${nH}!`,'-filter','Point','-resize',`${oW}x${oH}!`,'out.png'];
+}
+
+// ── runMagick ─────────────────────────────────────────────────────────────────
+async function runMagick(buf){
+  const palName=qget('palette'),pathVal=qget('path');
+  const filterVal=pathVal==='FirstRecolor'?'Point':qget('filter');
+  const img=new Image(),tmp=URL.createObjectURL(new Blob([buf]));
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=tmp;});
+  const oW=img.naturalWidth||1,oH=img.naturalHeight||1;URL.revokeObjectURL(tmp);
+  const fac=parseFloat(qget('factor'));
+  const nW=Math.max(1,Math.round(oW*fac)),nH=Math.max(1,Math.round(oH*fac));
+  const isJs=qget('dither').startsWith('js:');
+  let wb=buf;if(isJs){const d=await applyJsDither(buf,nW,nH,filterVal);if(d)wb=d;}
+  const palBlob=await buildPalettePNG(palName);
+  const cmd=buildCmd(oW,oH,nW,nH,filterVal,pathVal,isJs);
+  const u8in=new Uint8Array(wb),u8p=new Uint8Array(await palBlob.arrayBuffer());
+  const inp=[{name:'in.png',content:u8in,blob:u8in},{name:'palette.png',content:u8p,blob:u8p}];
+  let result;
+  if(typeof Magick.execute==='function'){
+    result=await Magick.execute({inputFiles:inp.map(f=>({name:f.name,content:f.content})),commands:[cmd.join(' ')]});
+  } else if(typeof Magick.Call==='function'){
+    result=await Magick.Call(inp.map(f=>({name:f.name,blob:f.blob})),cmd);
+  } else throw new Error('No ImageMagick API');
+  const out=extractBlob(result);
+  if(!out)throw new Error('No output blob');
+  return out;
+}
+
+// ── runConversion ─────────────────────────────────────────────────────────────
+async function runConversion(verbose=true){
+  if(!curBuf){setPill('No file','');return;}
+  try{
+    setPill(verbose?'Converting...':'Working...','busy');
+    const blob=await runMagick(curBuf);
+    lastBlob=blob;outImg.src=URL.createObjectURL(blob);
+    setDlDisabled(false);setPill('Done','done');
+  }catch(e){console.error(e);setPill('Error: '+(e.message||e).slice(0,36),'err');}
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function doDownload(){
+  if(!lastBlob)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(lastBlob);
+  a.download=(curName?curName.replace(/\.[^.]+$/,''):'out')+'-cga.png';
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+// ── Batch ZIP ─────────────────────────────────────────────────────────────────
+async function doBatch(){
+  if(!queued.length){setPill('No files queued','err');return;}
+  qprop('batch-btn','disabled',true);mobBatch.disabled=true;
+  const Zip=await loadJSZip(),zip=new Zip();
+  for(let i=0;i<queued.length;i++){
+    const f=queued[i];
+    qtext('batch-prog',`Processing ${i+1}/${queued.length}: ${f.name}`);
+    setPill(`Batch ${i+1}/${queued.length}`,'busy');
+    try{const arr=await(await runMagick(f.arrayBuffer)).arrayBuffer();zip.file(f.name.replace(/\.[^.]+$/,'')+'-cga.png',arr);}
+    catch(e){zip.file(f.name+'-error.txt','Error: '+(e.message||e));}
+  }
+  qtext('batch-prog','Generating ZIP...');
+  const content=await zip.generateAsync({type:'blob'},m=>{qtext('batch-prog',`Zipping: ${Math.round(m.percent)}%`);});
+  const a=document.createElement('a');a.href=URL.createObjectURL(content);a.download='cga-batch.zip';
+  document.body.appendChild(a);a.click();a.remove();
+  qtext('batch-prog',`Done - ${queued.length} file(s)`);
+  setPill('Batch done','done');
+  qprop('batch-btn','disabled',false);mobBatch.disabled=false;
+}
+
+// ── Hold-to-compare ───────────────────────────────────────────────────────────
+let pDown=false,drag=false,sx=0,sy=0;
+outImg.addEventListener('pointerdown',e=>{
+  e.preventDefault();pDown=true;drag=false;sx=e.clientX;sy=e.clientY;
+  if(curBuf)outImg.src=URL.createObjectURL(new Blob([curBuf]));
+});
+outImg.addEventListener('pointermove',e=>{if(!pDown)return;if(Math.abs(e.clientX-sx)>5||Math.abs(e.clientY-sy)>5)drag=true;});
+outImg.addEventListener('pointerup',()=>{if(pDown&&!drag&&lastBlob)outImg.src=URL.createObjectURL(lastBlob);pDown=drag=false;});
+['pointerleave','pointercancel'].forEach(ev=>outImg.addEventListener(ev,()=>{if(pDown&&lastBlob)outImg.src=URL.createObjectURL(lastBlob);pDown=drag=false;}));
+outImg.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+syncFilter();syncSwatches();setPill('Ready','');
+window.addEventListener('load',loadExample);
+</script>
 </body>
 </html>
