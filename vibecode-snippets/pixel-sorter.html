@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pxsort / studio</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0e;
+    --surface: #151518;
+    --surface-2: #1c1c21;
+    --border: #2a2a32;
+    --border-hover: #3a3a45;
+    --text: #e8e6e3;
+    --text-dim: #8a8891;
+    --accent: #c8ff2e;
+    --accent-dim: rgba(200, 255, 46, 0.12);
+    --accent-glow: rgba(200, 255, 46, 0.06);
+    --radius: 10px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Instrument Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .header {
+    padding: 22px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: grid; place-items: center;
+  }
+  .logo-icon svg { width: 18px; height: 18px; }
+  .logo h1 { font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.02em; }
+  .logo h1 span { color: var(--text-dim); font-weight: 300; }
+  .header-tag {
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    background: var(--surface); padding: 5px 14px; border-radius: 100px;
+    border: 1px solid var(--border);
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 330px 1fr;
+    min-height: calc(100vh - 69px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 16px 20px 24px;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto;
+    max-height: calc(100vh - 69px);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 5px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .section-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim);
+    padding: 14px 0 6px;
+  }
+  .section-label:first-child { padding-top: 4px; }
+
+  /* Upload */
+  .upload-zone {
+    border: 1.5px dashed var(--border); border-radius: var(--radius);
+    padding: 26px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--accent-glow); position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .upload-zone input { display: none; }
+  .upload-zone svg { margin: 0 auto 6px; display: block; opacity: 0.5; }
+  .upload-zone p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .upload-zone p strong { color: var(--accent); font-weight: 500; }
+  .upload-zone.has-image { padding: 8px; }
+  .upload-zone.has-image .upload-prompt { display: none; }
+  .upload-thumb { display: none; width: 100%; border-radius: 6px; }
+  .upload-zone.has-image .upload-thumb { display: block; }
+  .file-info {
+    display: none; font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim); margin-top: 5px; text-align: center;
+  }
+  .upload-zone.has-image ~ .file-info { display: block; }
+
+  /* Control group */
+  .control-group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; display: flex;
+    flex-direction: column; gap: 13px;
+  }
+  .control-row { display: flex; flex-direction: column; gap: 7px; }
+  .control-row.hidden { display: none; }
+  .control-header { display: flex; justify-content: space-between; align-items: center; }
+  .control-header label { font-size: 12.5px; font-weight: 500; }
+  .control-header .val {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    background: var(--accent-dim); padding: 1px 8px; border-radius: 4px;
+    min-width: 36px; text-align: center;
+  }
+
+  /* Range */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 5px;
+    background: var(--surface-2); border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--bg);
+    box-shadow: 0 0 6px rgba(200,255,46,0.3); transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type="range"]::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%; background: var(--accent);
+    border: 2px solid var(--bg); box-shadow: 0 0 6px rgba(200,255,46,0.3);
+  }
+
+  /* Select */
+  .custom-select { position: relative; }
+  .custom-select select {
+    width: 100%; padding: 7px 28px 7px 10px; font-family: var(--sans); font-size: 12.5px;
+    color: var(--text); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; appearance: none; outline: none;
+  }
+  .custom-select select:focus { border-color: var(--accent); }
+  .custom-select::after {
+    content: '▾'; position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%); color: var(--text-dim); pointer-events: none; font-size: 11px;
+  }
+  .custom-select select option { background: var(--surface); color: var(--text); }
+
+  /* Angle dial */
+  .angle-row-inner { display: flex; align-items: center; gap: 12px; }
+  .angle-dial {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid var(--border); background: var(--surface-2);
+    cursor: pointer; position: relative; transition: border-color 0.15s;
+  }
+  .angle-dial:hover { border-color: var(--accent); }
+  .angle-dial .needle {
+    position: absolute; top: 50%; left: 50%;
+    width: 15px; height: 2px; background: var(--accent);
+    transform-origin: 0 50%; border-radius: 1px;
+    box-shadow: 0 0 6px rgba(200,255,46,0.4);
+    pointer-events: none;
+  }
+  .angle-dial .dot {
+    position: absolute; top: 50%; left: 50%;
+    width: 5px; height: 5px; background: var(--accent);
+    border-radius: 50%; transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .angle-row-inner input[type="range"] { flex: 1; }
+
+  /* Buttons */
+  .btn {
+    font-family: var(--sans); font-size: 13px; font-weight: 600;
+    padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 0 20px rgba(200,255,46,0.3); transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--border-hover); background: var(--border); }
+  .btn-row { display: flex; gap: 8px; padding-top: 8px; }
+  .btn-row .btn { flex: 1; }
+
+  /* ── Canvas ── */
+  .canvas-area {
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px; position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, var(--accent-glow) 0%, transparent 60%),
+      repeating-conic-gradient(var(--surface) 0% 25%, transparent 0% 50%) 0 0 / 24px 24px;
+  }
+  .empty-state { text-align: center; max-width: 340px; animation: fadeIn 0.6s ease; }
+  .empty-state svg { margin: 0 auto 16px; opacity: 0.15; }
+  .empty-state h2 { font-family: var(--mono); font-size: 15px; font-weight: 400; margin-bottom: 8px; color: var(--text-dim); }
+  .empty-state p { font-size: 13px; color: var(--text-dim); opacity: 0.6; line-height: 1.6; }
+
+  .canvas-wrapper {
+    display: none; position: relative; max-width: 100%;
+    max-height: calc(100vh - 133px); border-radius: var(--radius); overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+    animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .canvas-wrapper canvas {
+    display: block; max-width: 100%; max-height: calc(100vh - 133px); object-fit: contain;
+  }
+
+  .processing-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--bg); background: var(--accent);
+    padding: 4px 12px; border-radius: 100px;
+    display: none; align-items: center; gap: 6px; z-index: 2;
+  }
+  .processing-badge.visible { display: flex; }
+  .processing-badge .blink { width: 6px; height: 6px; background: var(--bg); border-radius: 50%; animation: blink 1s infinite; }
+
+  .stats-bar {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    background: rgba(12,12,14,0.88); backdrop-filter: blur(10px);
+    padding: 5px 16px; border-radius: 100px; border: 1px solid var(--border);
+    display: none; gap: 14px; white-space: nowrap; z-index: 2;
+  }
+  .stats-bar.visible { display: flex; }
+  .stats-bar span strong { color: var(--text); font-weight: 500; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); max-height: none; }
+    .canvas-area { min-height: 50vh; }
+    .header-tag { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0c0c0e" stroke-width="2.5" stroke-linecap="round">
+        <line x1="4" y1="21" x2="4" y2="14"/><line x1="8" y1="21" x2="8" y2="7"/>
+        <line x1="12" y1="21" x2="12" y2="11"/><line x1="16" y1="21" x2="16" y2="3"/>
+        <line x1="20" y1="21" x2="20" y2="9"/>
+      </svg>
+    </div>
+    <h1>pxsort <span>/ studio</span></h1>
+  </div>
+  <div class="header-tag">angles · curves · geometry</div>
+</div>
+
+<div class="app">
+<aside class="sidebar">
+
+  <div class="section-label">Source</div>
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept="image/*">
+    <div class="upload-prompt">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <p>Drop image or <strong>browse</strong></p>
+    </div>
+    <img class="upload-thumb" id="uploadThumb">
+  </div>
+  <div class="file-info" id="fileInfo"></div>
+
+  <div class="section-label">Geometry</div>
+  <div class="control-group">
+    <div class="control-row">
+      <div class="control-header"><label>Path Mode</label></div>
+      <div class="custom-select">
+        <select id="pathMode">
+          <option value="lines">Lines</option>
+          <option value="radial">Radial (Sun Rays)</option>
+          <option value="concentric">Concentric Rings</option>
+          <option value="spiral">Spiral</option>
+        </select>
+      </div>
+    </div>
+    <div class="control-row" id="angleRow">
+      <div class="control-header">
+        <label>Angle</label>
+        <span class="val" id="angleVal">0°</span>
+      </div>
+      <div class="angle-row-inner">
+        <div class="angle-dial" id="angleDial">
+          <div class="dot"></div>
+          <div class="needle" id="angleNeedle"></div>
+        </div>
+        <input type="range" id="angle" min="0" max="359" value="0">
+      </div>
+    </div>
+    <div class="control-row hidden" id="tightnessRow">
+      <div class="control-header">
+        <label>Spiral Tightness</label>
+        <span class="val" id="tightnessVal">10</span>
+      </div>
+      <input type="range" id="tightness" min="3" max="50" value="10">
+    </div>
+  </div>
+
+  <div class="section-label">Algorithm</div>
+  <div class="control-group">
+    <div class="control-row">
+      <div class="control-header"><label>Sort By</label></div>
+      <div class="custom-select">
+        <select id="sortMode">
+          <option value="brightness">Brightness</option>
+          <option value="hue">Hue</option>
+          <option value="saturation">Saturation</option>
+          <option value="red">Red Channel</option>
+          <option value="green">Green Channel</option>
+          <option value="blue">Blue Channel</option>
+        </select>
+      </div>
+    </div>
+    <div class="control-row">
+      <div class="control-header"><label>Sort Curve</label></div>
+      <div class="custom-select">
+        <select id="sortCurve">
+          <option value="ascending">↗ Ascending</option>
+          <option value="descending">↘ Descending</option>
+          <option value="peak">△ Peak</option>
+          <option value="valley">▽ Valley</option>
+          <option value="wave">∿ Sine Wave</option>
+          <option value="shatter">◇ Shatter</option>
+        </select>
+      </div>
+    </div>
+    <div class="control-row">
+      <div class="control-header">
+        <label>Lower Threshold</label>
+        <span class="val" id="threshLowVal">25%</span>
+      </div>
+      <input type="range" id="threshLow" min="0" max="100" value="25">
+    </div>
+    <div class="control-row">
+      <div class="control-header">
+        <label>Upper Threshold</label>
+        <span class="val" id="threshHighVal">80%</span>
+      </div>
+      <input type="range" id="threshHigh" min="0" max="100" value="80">
+    </div>
+    <div class="control-row">
+      <div class="control-header">
+        <label>Span Length</label>
+        <span class="val" id="spanLenVal">100%</span>
+      </div>
+      <input type="range" id="spanLen" min="1" max="100" value="100">
+    </div>
+    <div class="control-row">
+      <div class="control-header">
+        <label>Randomness</label>
+        <span class="val" id="randomVal">0%</span>
+      </div>
+      <input type="range" id="random" min="0" max="100" value="0">
+    </div>
+  </div>
+
+  <div class="section-label">Effects</div>
+  <div class="control-group">
+    <div class="control-row">
+      <div class="control-header"><label>Edge Mask</label></div>
+      <div class="custom-select">
+        <select id="edgeMask">
+          <option value="none">None</option>
+          <option value="subtle">Subtle — break at soft edges</option>
+          <option value="strong">Strong — break at all edges</option>
+        </select>
+      </div>
+    </div>
+    <div class="control-row">
+      <div class="control-header">
+        <label>Blend Original</label>
+        <span class="val" id="blendVal">0%</span>
+      </div>
+      <input type="range" id="blend" min="0" max="100" value="0">
+    </div>
+  </div>
+
+  <div class="section-label">Output</div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="resetBtn" disabled>Reset</button>
+    <button class="btn btn-primary" id="downloadBtn" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download PNG
+    </button>
+  </div>
+
+</aside>
+
+<main class="canvas-area">
+  <div class="empty-state" id="emptyState">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+    <h2>No image loaded</h2>
+    <p>Upload an image to sort pixels along lines at any angle, spirals, radial rays, or concentric rings — with custom sort curves and edge-aware masking.</p>
+  </div>
+
+  <div class="canvas-wrapper" id="canvasWrapper">
+    <div class="processing-badge" id="processingBadge"><div class="blink"></div> sorting</div>
+    <canvas id="outputCanvas"></canvas>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <span><strong id="statDim"></strong> px</span>
+    <span><strong id="statTime"></strong> ms</span>
+    <span><strong id="statSpans"></strong> spans</span>
+  </div>
+</main>
+</div>
+
+<script>
+(() => {
+  /* ═════════════════════════════════════════════
+     DOM
+     ═════════════════════════════════════════════ */
+  const $ = id => document.getElementById(id);
+  const fileInput   = $('fileInput'),  uploadZone  = $('uploadZone'),
+        uploadThumb = $('uploadThumb'),fileInfo    = $('fileInfo'),
+        emptyState  = $('emptyState'), canvasWrap  = $('canvasWrapper'),
+        canvas      = $('outputCanvas'),badge      = $('processingBadge'),
+        statsBar    = $('statsBar'),   downloadBtn = $('downloadBtn'),
+        resetBtn    = $('resetBtn'),   needle      = $('angleNeedle');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const C = {
+    pathMode: $('pathMode'), angle: $('angle'), tightness: $('tightness'),
+    sortMode: $('sortMode'), sortCurve: $('sortCurve'),
+    threshLow: $('threshLow'), threshHigh: $('threshHigh'),
+    spanLen: $('spanLen'), random: $('random'),
+    edgeMask: $('edgeMask'), blend: $('blend')
+  };
+
+  let sourceImage = null, originalData = null;
+  let debounceTimer = null, isProcessing = false;
+
+  /* ═════════════════════════════════════════════
+     IMAGE UPLOAD
+     ═════════════════════════════════════════════ */
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files[0]) loadImage(e.target.files[0]); });
+
+  function loadImage(file) {
+    if (!file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      sourceImage = img;
+      uploadThumb.src = url;
+      uploadZone.classList.add('has-image');
+      fileInfo.textContent = `${file.name} · ${img.naturalWidth}×${img.naturalHeight}`;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+      originalData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      emptyState.style.display = 'none';
+      canvasWrap.style.display = 'block';
+      downloadBtn.disabled = false;
+      resetBtn.disabled = false;
+      scheduleSort();
+    };
+    img.src = url;
+  }
+
+  /* ═════════════════════════════════════════════
+     PIXEL VALUE EXTRACTORS
+     ═════════════════════════════════════════════ */
+  function brightness(r, g, b) { return (0.299*r + 0.587*g + 0.114*b) / 255; }
+
+  function hue(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r,g,b), mn = Math.min(r,g,b), d = mx - mn;
+    if (d === 0) return 0;
+    let h;
+    if (mx === r) h = ((g-b)/d) % 6;
+    else if (mx === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h /= 6; return h < 0 ? h+1 : h;
+  }
+
+  function saturation(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r,g,b);
+    return mx === 0 ? 0 : (mx - Math.min(r,g,b)) / mx;
+  }
+
+  function getVal(r, g, b, mode) {
+    switch (mode) {
+      case 'brightness':  return brightness(r, g, b);
+      case 'hue':         return hue(r, g, b);
+      case 'saturation':  return saturation(r, g, b);
+      case 'red':         return r / 255;
+      case 'green':       return g / 255;
+      case 'blue':        return b / 255;
+    }
+  }
+
+  /* ═════════════════════════════════════════════
+     SOBEL EDGE MAP
+     ═════════════════════════════════════════════ */
+  function computeEdgeMap(src, w, h) {
+    const gray = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const j = i << 2;
+      gray[i] = 0.299*src[j] + 0.587*src[j+1] + 0.114*src[j+2];
+    }
+    const edges = new Float32Array(w * h);
+    let mx = 0;
+    for (let y = 1; y < h-1; y++) {
+      for (let x = 1; x < w-1; x++) {
+        const i = y*w + x;
+        const gx = -gray[i-w-1] + gray[i-w+1] - 2*gray[i-1] + 2*gray[i+1] - gray[i+w-1] + gray[i+w+1];
+        const gy = -gray[i-w-1] - 2*gray[i-w] - gray[i-w+1] + gray[i+w-1] + 2*gray[i+w] + gray[i+w+1];
+        edges[i] = Math.sqrt(gx*gx + gy*gy);
+        if (edges[i] > mx) mx = edges[i];
+      }
+    }
+    if (mx > 0) { const inv = 1/mx; for (let i = 0; i < edges.length; i++) edges[i] *= inv; }
+    return edges;
+  }
+
+  /* ═════════════════════════════════════════════
+     SORT CURVE FUNCTIONS
+     ═════════════════════════════════════════════ */
+  function applyCurve(span, curveType) {
+    const sorted = span.slice().sort((a, b) => a.v - b.v);
+    const n = sorted.length;
+
+    switch (curveType) {
+      case 'ascending':  return sorted;
+      case 'descending': return sorted.reverse();
+
+      case 'peak': {
+        // Smallest at edges, largest peaks in center
+        const out = new Array(n);
+        let lo = 0, hi = n - 1;
+        for (let i = 0; i < n; i++) {
+          if (i & 1) out[hi--] = sorted[i];
+          else out[lo++] = sorted[i];
+        }
+        return out;
+      }
+
+      case 'valley': {
+        // Largest at edges, smallest in center
+        const out = new Array(n);
+        let lo = 0, hi = n - 1;
+        for (let i = n - 1; i >= 0; i--) {
+          if ((n - 1 - i) & 1) out[hi--] = sorted[i];
+          else out[lo++] = sorted[i];
+        }
+        return out;
+      }
+
+      case 'wave': {
+        // Map sorted values onto a sine-wave positional pattern
+        const out = new Array(n);
+        const indices = Array.from({ length: n }, (_, i) => i);
+        indices.sort((a, b) =>
+          Math.sin(a / n * Math.PI * 3) - Math.sin(b / n * Math.PI * 3)
+        );
+        for (let i = 0; i < n; i++) out[indices[i]] = sorted[i];
+        return out;
+      }
+
+      case 'shatter': {
+        // Sort then do chaotic swaps for a fractured look
+        const out = sorted.slice();
+        const passes = Math.floor(n * 0.45);
+        for (let i = 0; i < passes; i++) {
+          const a = Math.floor(Math.random() * n);
+          const b = Math.floor(Math.random() * n);
+          const t = out[a]; out[a] = out[b]; out[b] = t;
+        }
+        return out;
+      }
+
+      default: return sorted;
+    }
+  }
+
+  /* ═════════════════════════════════════════════
+     PATH BUILDERS
+     All use projection-based grouping so every
+     pixel is assigned to exactly one path.
+     Returns: Array of arrays of {x, y}
+     (ordered by traversal within each path).
+     ═════════════════════════════════════════════ */
+
+  function buildLinePaths(w, h, angleDeg) {
+    const theta = angleDeg * Math.PI / 180;
+    const cosT = Math.cos(theta), sinT = Math.sin(theta);
+
+    // Perpendicular projection range from corners
+    const corners = [[0,0],[w-1,0],[0,h-1],[w-1,h-1]];
+    let tMin = Infinity, tMax = -Infinity;
+    for (const [x,y] of corners) {
+      const t = Math.round(-x*sinT + y*cosT);
+      if (t < tMin) tMin = t;
+      if (t > tMax) tMax = t;
+    }
+
+    const range = tMax - tMin + 1;
+    const buckets = new Array(range);
+    for (let i = 0; i < range; i++) buckets[i] = [];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const t = Math.round(-x*sinT + y*cosT) - tMin;
+        const s = x*cosT + y*sinT;
+        buckets[t].push({ x, y, s });
+      }
+    }
+    for (let i = 0; i < range; i++) {
+      const b = buckets[i];
+      if (b.length > 1) b.sort((a, b) => a.s - b.s);
+    }
+    return buckets;
+  }
+
+  function buildRadialPaths(w, h) {
+    const cx = w * 0.5, cy = h * 0.5;
+    const numBins = Math.max(720, Math.round(Math.max(w,h) * 1.5));
+    const buckets = new Array(numBins);
+    for (let i = 0; i < numBins; i++) buckets[i] = [];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let a = Math.atan2(y - cy, x - cx);
+        if (a < 0) a += Math.PI * 2;
+        const bin = Math.round(a / (Math.PI*2) * numBins) % numBins;
+        const r = Math.sqrt((x-cx)**2 + (y-cy)**2);
+        buckets[bin].push({ x, y, s: r });
+      }
+    }
+    for (const b of buckets) if (b.length > 1) b.sort((a, b) => a.s - b.s);
+    return buckets;
+  }
+
+  function buildConcentricPaths(w, h) {
+    const cx = w * 0.5, cy = h * 0.5;
+    const maxR = Math.ceil(Math.sqrt(cx*cx + cy*cy));
+    const buckets = new Array(maxR + 1);
+    for (let i = 0; i <= maxR; i++) buckets[i] = [];
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const r = Math.round(Math.sqrt((x-cx)**2 + (y-cy)**2));
+        let a = Math.atan2(y - cy, x - cx);
+        if (a < 0) a += Math.PI * 2;
+        buckets[r].push({ x, y, s: a });
+      }
+    }
+    for (const b of buckets) if (b.length > 1) b.sort((a, b) => a.s - b.s);
+    return buckets;
+  }
+
+  function buildSpiralPaths(w, h, spacing) {
+    const cx = w * 0.5, cy = h * 0.5;
+    const maxR = Math.sqrt(cx*cx + cy*cy);
+    const numArms = Math.ceil(maxR / spacing) + 1;
+    const buckets = new Array(numArms);
+    for (let i = 0; i < numArms; i++) buckets[i] = [];
+
+    const TWO_PI = Math.PI * 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const r = Math.sqrt((x-cx)**2 + (y-cy)**2);
+        let phi = Math.atan2(y - cy, x - cx);
+        if (phi < 0) phi += TWO_PI;
+
+        // Which arm of the spiral are we on?
+        // Spiral: r = spacing * totalAngle / (2π)
+        // totalAngle at this r = 2π * r / spacing
+        // Subtract pixel angle to get how many full turns past
+        const spiralAngle = TWO_PI * r / spacing;
+        let arm = Math.round((spiralAngle - phi) / TWO_PI);
+        if (arm < 0) arm = 0;
+        if (arm >= numArms) arm = numArms - 1;
+
+        buckets[arm].push({ x, y, s: phi });
+      }
+    }
+    for (const b of buckets) if (b.length > 1) b.sort((a, b) => a.s - b.s);
+    return buckets;
+  }
+
+  /* ═════════════════════════════════════════════
+     MAIN SORT ENGINE
+     ═════════════════════════════════════════════ */
+  function processSort() {
+    if (!sourceImage) return;
+    if (isProcessing) { scheduleSort(); return; }
+    isProcessing = true;
+    badge.classList.add('visible');
+
+    setTimeout(() => {
+      const t0 = performance.now();
+      const w = canvas.width, h = canvas.height;
+
+      // Read params
+      const mode      = C.sortMode.value;
+      const curve     = C.sortCurve.value;
+      const lo        = +C.threshLow.value / 100;
+      const hi        = +C.threshHigh.value / 100;
+      const maxSpanF  = +C.spanLen.value / 100;
+      const rand      = +C.random.value / 100;
+      const pathMode  = C.pathMode.value;
+      const angleDeg  = +C.angle.value;
+      const tightness = +C.tightness.value;
+      const edgeMode  = C.edgeMask.value;
+      const blendAmt  = +C.blend.value / 100;
+
+      const src = originalData.data;
+      const out = new Uint8ClampedArray(src);
+
+      // Edge map
+      let edgeMap = null;
+      const edgeThresh = edgeMode === 'subtle' ? 0.30 : edgeMode === 'strong' ? 0.10 : 1;
+      if (edgeMode !== 'none') edgeMap = computeEdgeMap(src, w, h);
+
+      // Build paths
+      let paths;
+      switch (pathMode) {
+        case 'lines':       paths = buildLinePaths(w, h, angleDeg); break;
+        case 'radial':      paths = buildRadialPaths(w, h); break;
+        case 'concentric':  paths = buildConcentricPaths(w, h); break;
+        case 'spiral':      paths = buildSpiralPaths(w, h, tightness); break;
+      }
+
+      let totalSpans = 0;
+
+      for (let p = 0; p < paths.length; p++) {
+        const line = paths[p];
+        if (line.length < 2) continue;
+        const maxSpanPx = Math.max(2, Math.floor(line.length * maxSpanF));
+        let i = 0;
+
+        while (i < line.length) {
+          const px = line[i];
+          const idx0 = (px.y * w + px.x) << 2;
+          const v0 = getVal(src[idx0], src[idx0+1], src[idx0+2], mode);
+
+          // Gate: threshold + edge + random
+          if (v0 < lo || v0 > hi || (rand > 0 && Math.random() < rand * 0.4)) { i++; continue; }
+          if (edgeMap && edgeMap[px.y * w + px.x] > edgeThresh) { i++; continue; }
+
+          // Collect span
+          const start = i;
+          const limit = Math.min(line.length, start + maxSpanPx);
+          const span = [];
+
+          while (i < limit) {
+            const sp = line[i];
+            const idx = (sp.y * w + sp.x) << 2;
+            const v = getVal(src[idx], src[idx+1], src[idx+2], mode);
+            if (v < lo || v > hi) break;
+            if (edgeMap && edgeMap[sp.y * w + sp.x] > edgeThresh) break;
+            if (rand > 0 && i > start && Math.random() < rand * 0.1) break;
+            span.push({ r: src[idx], g: src[idx+1], b: src[idx+2], a: src[idx+3], v });
+            i++;
+          }
+
+          if (span.length < 2) continue;
+          const arranged = applyCurve(span, curve);
+          totalSpans++;
+
+          for (let s = 0; s < arranged.length; s++) {
+            const dest = line[start + s];
+            const di = (dest.y * w + dest.x) << 2;
+            out[di]   = arranged[s].r;
+            out[di+1] = arranged[s].g;
+            out[di+2] = arranged[s].b;
+            out[di+3] = arranged[s].a;
+          }
+        }
+      }
+
+      // Blend with original
+      if (blendAmt > 0) {
+        const a = blendAmt, b = 1 - blendAmt;
+        for (let i = 0; i < out.length; i += 4) {
+          out[i]   = Math.round(out[i]*b   + src[i]*a);
+          out[i+1] = Math.round(out[i+1]*b + src[i+1]*a);
+          out[i+2] = Math.round(out[i+2]*b + src[i+2]*a);
+        }
+      }
+
+      const outImg = ctx.createImageData(w, h);
+      outImg.data.set(out);
+      ctx.putImageData(outImg, 0, 0);
+
+      const elapsed = Math.round(performance.now() - t0);
+      $('statDim').textContent = `${w}×${h}`;
+      $('statTime').textContent = elapsed;
+      $('statSpans').textContent = totalSpans.toLocaleString();
+      statsBar.classList.add('visible');
+      badge.classList.remove('visible');
+      isProcessing = false;
+    }, 16);
+  }
+
+  /* ═════════════════════════════════════════════
+     CONTROL WIRING
+     ═════════════════════════════════════════════ */
+  function scheduleSort() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(processSort, 200);
+  }
+
+  function updateLabels() {
+    $('angleVal').textContent      = C.angle.value + '°';
+    $('tightnessVal').textContent  = C.tightness.value;
+    $('threshLowVal').textContent  = C.threshLow.value + '%';
+    $('threshHighVal').textContent = C.threshHigh.value + '%';
+    $('spanLenVal').textContent    = C.spanLen.value + '%';
+    $('randomVal').textContent     = C.random.value + '%';
+    $('blendVal').textContent      = C.blend.value + '%';
+    needle.style.transform = `rotate(${C.angle.value}deg)`;
+    const pm = C.pathMode.value;
+    $('angleRow').classList.toggle('hidden', pm !== 'lines');
+    $('tightnessRow').classList.toggle('hidden', pm !== 'spiral');
+  }
+
+  // Slider + select events
+  [C.angle, C.tightness, C.threshLow, C.threshHigh, C.spanLen, C.random, C.blend]
+    .forEach(el => el.addEventListener('input', () => { updateLabels(); scheduleSort(); }));
+  [C.pathMode, C.sortMode, C.sortCurve, C.edgeMask]
+    .forEach(el => el.addEventListener('change', () => { updateLabels(); scheduleSort(); }));
+
+  // Angle dial drag
+  const dial = $('angleDial');
+  function dialDrag(e) {
+    const rect = dial.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    const px = e.touches ? e.touches[0].clientX : e.clientX;
+    const py = e.touches ? e.touches[0].clientY : e.clientY;
+    let a = Math.atan2(py - cy, px - cx) * 180 / Math.PI;
+    if (a < 0) a += 360;
+    C.angle.value = Math.round(a);
+    updateLabels(); scheduleSort();
+  }
+  dial.addEventListener('mousedown', e => {
+    dialDrag(e);
+    const mv = ev => dialDrag(ev);
+    const up = () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+  });
+  dial.addEventListener('touchstart', e => { e.preventDefault(); dialDrag(e); }, { passive: false });
+  dial.addEventListener('touchmove', e => { e.preventDefault(); dialDrag(e); }, { passive: false });
+
+  // Reset
+  resetBtn.addEventListener('click', () => {
+    if (!originalData) return;
+    C.angle.value = 0; C.tightness.value = 10;
+    C.threshLow.value = 25; C.threshHigh.value = 80;
+    C.spanLen.value = 100; C.random.value = 0; C.blend.value = 0;
+    C.pathMode.value = 'lines'; C.sortMode.value = 'brightness';
+    C.sortCurve.value = 'ascending'; C.edgeMask.value = 'none';
+    updateLabels(); scheduleSort();
+  });
+
+  // Download
+  downloadBtn.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.download = 'pixel-sorted.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  });
+
+  updateLabels();
+})();
+</script>
+</body>
+</html>
