@@ -5,6 +5,7 @@ export default {
   name: 'Run-Length Smear',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Simulates a broken RLE decoder, stretching pixel runs into smears.',
   params: [
     { key: 'tolerance', label: 'Tol', min: 1, max: 80, step: 1, def: 20 },
     { key: 'stretch', label: 'Stretch', min: 100, max: 500, step: 10, def: 200 },

@@ -31,6 +31,8 @@ glitch-lab/
 │       ├── slice-shuffle.js    # Shuffle horizontal slices
 │       ├── pixel-drift.js      # Sine-wave row/col shift
 │       ├── echo-shift.js       # Bitwise-blended offset copies
+│       ├── block-scramble.js   # Swap random tile-grid blocks (seeded)
+│       ├── mosaic-corrupt.js   # Per-tile random corruption (seeded)
 │       │
 │       │  Data / Bit
 │       ├── bit-shift.js        # Shift, rotate, XOR on channel bits
@@ -48,6 +50,8 @@ glitch-lab/
 │       ├── runlength-smear.js  # Broken RLE decoder simulation
 │       ├── byte-repeat.js      # Duplicate chunks (stuck read head)
 │       ├── byte-reverse.js     # Reverse bytes within buffer chunks
+│       ├── sector-fault.js     # Bad disk reads — wrong byte offset patches (seeded)
+│       ├── packet-loss.js      # Streaming corruption — row band drop/shift/repeat/XOR (seeded)
 │       │
 │       │  Compression
 │       ├── jpeg-crush.js       # Iterative JPEG re-encode

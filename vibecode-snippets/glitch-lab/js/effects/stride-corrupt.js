@@ -6,6 +6,7 @@ export default {
   name: 'Stride Corrupt',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Reads the pixel buffer with a wrong image width, creating diagonal shear.',
   params: [
     { key: 'strideShift', label: 'H Stride', min: -50, max: 50, step: 1, def: 3 },
     { key: 'vStrideShift', label: 'V Stride', min: -50, max: 50, step: 1, def: 0 },

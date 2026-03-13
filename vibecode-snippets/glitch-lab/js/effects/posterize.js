@@ -2,6 +2,7 @@ export default {
   name: 'Posterize',
   badge: 'COLOR',
   badgeColor: '#ff3366',
+  description: 'Reduces the number of color levels per channel, creating flat color bands.',
   params: [
     { key: 'levels', label: 'Levels', min: 2, max: 32, step: 1, def: 6 },
   ],

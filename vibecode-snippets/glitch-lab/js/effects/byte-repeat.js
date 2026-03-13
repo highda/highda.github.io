@@ -5,6 +5,7 @@ export default {
   name: 'Byte Repeat',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Duplicates byte chunks as if a read head got stuck.',
   params: [
     { key: 'interval', label: 'Every N', min: 16,  max: 2000, step: 8, def: 256 },
     { key: 'copyLen',  label: 'Copy M',  min: 4,   max: 500,  step: 4, def: 64 },

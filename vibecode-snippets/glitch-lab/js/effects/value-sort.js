@@ -6,6 +6,7 @@ export default {
   name: 'Value Sort',
   badge: 'DATA',
   badgeColor: '#ff9900',
+  description: 'Sorts channel byte values independently per row, column, or full image.',
   params: [
     { key: 'scope', label: 'Scope', type: 'select', options: ['row', 'column', 'full'], def: 'row' },
     { key: 'channel', label: 'Channel', type: 'select', options: ['all', 'red', 'green', 'blue'], def: 'all' },

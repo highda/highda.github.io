@@ -5,6 +5,7 @@ export default {
   name: 'Threshold Gate',
   badge: 'COLOR',
   badgeColor: '#ff3366',
+  description: 'Per-channel binary threshold — values below go to 0, above go to 255.',
   params: [
     { key: 'redThr',   label: 'Red',   min: 0, max: 255, step: 1, def: 128 },
     { key: 'greenThr', label: 'Green', min: 0, max: 255, step: 1, def: 128 },

@@ -5,6 +5,7 @@ export default {
   name: 'Buffer Misalign',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Shifts the raw byte buffer, breaking RGBA pixel alignment.',
   params: [
     { key: 'offset', label: 'Offset', min: 1, max: 64, step: 1, def: 1 },
     { key: 'preserveAlpha', label: 'Alpha', type: 'select', options: ['preserve', 'corrupt'], def: 'preserve' },

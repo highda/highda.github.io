@@ -2,6 +2,7 @@ export default {
   name: 'Channel Swap',
   badge: 'COLOR',
   badgeColor: '#ff3366',
+  description: 'Remaps RGB channels to different outputs (e.g. BRG, GBR).',
   params: [
     {
       key: 'mode', label: 'Mode', type: 'select',

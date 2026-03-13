@@ -2,6 +2,7 @@ export default {
   name: 'Bayer Dither',
   badge: 'DATA',
   badgeColor: '#ff9900',
+  description: 'Applies ordered dithering using a 4×4 Bayer matrix.',
   params: [
     { key: 'levels', label: 'Levels', min: 2, max: 16, step: 1, def: 4 },
     { key: 'scale', label: 'Scale', min: 1, max: 8, step: 1, def: 1 },

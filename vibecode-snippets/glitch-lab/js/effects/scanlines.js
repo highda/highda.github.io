@@ -2,6 +2,7 @@ export default {
   name: 'Scanlines',
   badge: 'GEO',
   badgeColor: '#aaff44',
+  description: 'Darkens every Nth row to simulate CRT scanlines.',
   params: [
     { key: 'spacing', label: 'Spacing', min: 2, max: 16, step: 1, def: 3 },
     { key: 'opacity', label: 'Opacity', min: 0, max: 100, step: 1, def: 40 },

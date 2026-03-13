@@ -2,6 +2,7 @@ export default {
   name: 'JPEG Crush',
   badge: 'COMP',
   badgeColor: '#cc66ff',
+  description: 'Re-encodes the image through JPEG at low quality, optionally iterating.',
   params: [
     { key: 'quality', label: 'Quality', min: 1, max: 50, step: 1, def: 5 },
     { key: 'iterations', label: 'Iters', min: 1, max: 8, step: 1, def: 3 },

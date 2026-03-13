@@ -28,6 +28,10 @@ const EFFECT_PATHS = {
   byteReverse:   './byte-reverse.js',
   quantBlast:    './quantization-blast.js',
   corruptDiffusion:'./corrupt-diffusion.js',
+  blockScramble:   './block-scramble.js',
+  sectorFault:     './sector-fault.js',
+  mosaicCorrupt:   './mosaic-corrupt.js',
+  packetLoss:      './packet-loss.js',
 };
 
 /** Cache of loaded effect definitions. */
@@ -78,6 +82,8 @@ export const EFFECT_GROUPS = [
     { type: 'sliceShuffle',  label: 'Slice Shuffle' },
     { type: 'pixelDrift',    label: 'Pixel Drift' },
     { type: 'echoShift',    label: 'Echo Shift' },
+    { type: 'blockScramble', label: 'Block Scramble' },
+    { type: 'mosaicCorrupt', label: 'Mosaic Corrupt' },
   ]},
   { group: 'Data / Bit', effects: [
     { type: 'bitShift',      label: 'Bit Shift' },
@@ -95,6 +101,8 @@ export const EFFECT_GROUPS = [
     { type: 'runlengthSmear', label: 'Run-Length Smear' },
     { type: 'byteRepeat',    label: 'Byte Repeat' },
     { type: 'byteReverse',   label: 'Byte Reverse' },
+    { type: 'sectorFault',   label: 'Sector Fault' },
+    { type: 'packetLoss',    label: 'Packet Loss' },
   ]},
   { group: 'Compression', effects: [
     { type: 'jpegCrush',    label: 'JPEG Crush' },

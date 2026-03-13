@@ -5,6 +5,7 @@ export default {
   name: 'XOR Fold',
   badge: 'BIT',
   badgeColor: '#ff2200',
+  description: 'XORs each pixel with its mirrored or offset counterpart.',
   params: [
     { key: 'mode', label: 'Mode', type: 'select', options: ['mirror-h', 'mirror-v', 'mirror-both', 'offset'], def: 'mirror-h' },
     { key: 'offsetX', label: 'Off X', min: -200, max: 200, step: 1, def: 40 },

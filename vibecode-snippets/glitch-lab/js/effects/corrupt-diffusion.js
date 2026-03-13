@@ -23,6 +23,7 @@ export default {
   name: 'Corrupt Diffusion',
   badge: 'DATA',
   badgeColor: '#ff9900',
+  description: 'Error-diffusion dithering with corrupted propagation, channel bleed, and row skipping.',
   params: [
     { key: 'algo',      label: 'Algo',   type: 'select', options: ['floyd-steinberg', 'atkinson', 'sierra', 'sierra-lite'], def: 'floyd-steinberg' },
     { key: 'levels',    label: 'Levels', min: 2, max: 16, step: 1, def: 2 },

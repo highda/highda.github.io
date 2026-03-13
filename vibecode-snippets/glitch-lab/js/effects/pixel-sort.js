@@ -24,6 +24,7 @@ export default {
   name: 'Pixel Sort',
   badge: 'SORT',
   badgeColor: '#00eeff',
+  description: 'Sorts pixel spans by brightness, hue, or saturation within a threshold range.',
   params: [
     { key: 'threshLo', label: 'Lo Thr', min: 0, max: 100, step: 1, def: 25 },
     { key: 'threshHi', label: 'Hi Thr', min: 0, max: 100, step: 1, def: 80 },

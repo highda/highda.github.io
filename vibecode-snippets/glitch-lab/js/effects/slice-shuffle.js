@@ -2,6 +2,7 @@ export default {
   name: 'Slice Shuffle',
   badge: 'GEO',
   badgeColor: '#aaff44',
+  description: 'Shuffles horizontal image slices to random vertical positions.',
   params: [
     { key: 'slices', label: 'Slices', min: 4, max: 80, step: 1, def: 20 },
     { key: 'intensity', label: 'Intensity', min: 0, max: 100, step: 1, def: 50 },

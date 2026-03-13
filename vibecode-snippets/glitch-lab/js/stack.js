@@ -157,7 +157,7 @@ export function renderStack() {
           <span class="fx-drag-handle" draggable="true"
                 ondragstart="window._gl.onDragStart(event, ${fx.id})"
                 ondragend="window._gl.onDragEnd()">⠿</span>
-          <span class="fx-name" onclick="window._gl.toggleCollapse(${fx.id})">
+          <span class="fx-name" onclick="window._gl.toggleCollapse(${fx.id})" title="${def.description || ''}">
             <span style="color:var(--text-dim);font-size:9px;margin-right:4px">${chevron}</span>
             ${def.name}
           </span>

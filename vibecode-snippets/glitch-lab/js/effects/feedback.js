@@ -2,6 +2,7 @@ export default {
   name: 'Feedback',
   badge: 'META',
   badgeColor: '#ff6600',
+  description: 'Recursively overlays a zoomed and rotated copy of the image onto itself.',
   params: [
     { key: 'iterations', label: 'Iters', min: 1, max: 12, step: 1, def: 3 },
     { key: 'zoom', label: 'Zoom', min: 100, max: 130, step: 1, def: 105 },

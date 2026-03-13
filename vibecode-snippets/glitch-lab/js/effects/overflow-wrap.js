@@ -5,6 +5,7 @@ export default {
   name: 'Overflow Wrap',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Adds a value to channel bytes with modular wrap instead of clamping.',
   params: [
     { key: 'add', label: 'Add', min: 1, max: 255, step: 1, def: 128 },
     { key: 'channel', label: 'Channel', type: 'select', options: ['all', 'red', 'green', 'blue'], def: 'all' },

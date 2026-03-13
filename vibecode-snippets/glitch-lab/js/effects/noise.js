@@ -2,6 +2,7 @@ export default {
   name: 'Noise',
   badge: 'DATA',
   badgeColor: '#ff9900',
+  description: 'Injects random mono or per-channel color noise.',
   params: [
     { key: 'amount', label: 'Amount', min: 1, max: 120, step: 1, def: 30 },
     { key: 'mono', label: 'Type', type: 'select', options: ['color', 'mono'], def: 'mono' },

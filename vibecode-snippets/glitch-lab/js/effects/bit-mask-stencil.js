@@ -5,6 +5,7 @@ export default {
   name: 'Bit Mask Stencil',
   badge: 'BIT',
   badgeColor: '#ff9900',
+  description: 'Applies a user-defined 8-bit binary mask to channel bytes.',
   params: [
     { key: 'pattern', label: 'Pattern', type: 'binary', def: '11110000' },
     { key: 'op',      label: 'Op',      type: 'select', options: ['and', 'or', 'xor'], def: 'and' },

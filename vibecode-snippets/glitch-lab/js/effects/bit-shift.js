@@ -6,6 +6,7 @@ export default {
   name: 'Bit Shift',
   badge: 'BIT',
   badgeColor: '#ff9900',
+  description: 'Shifts, rotates, or XORs bits in color channel bytes.',
   params: [
     { key: 'shift', label: 'Shift', min: 1, max: 7, step: 1, def: 2 },
     { key: 'channel', label: 'Channel', type: 'select', options: ['all', 'red', 'green', 'blue'], def: 'red' },

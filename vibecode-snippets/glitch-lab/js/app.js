@@ -9,7 +9,7 @@ import {
   onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop,
   renderStack,
 } from './stack.js';
-import { EFFECT_GROUPS } from './effects/registry.js';
+import { EFFECT_GROUPS, preloadEffect, getEffectSync } from './effects/registry.js';
 
 // ─── Expose functions to inline event handlers via window._gl ───
 // ES modules don't pollute global scope, so inline onclick/oninput handlers
@@ -47,6 +47,20 @@ for (const cat of EFFECT_GROUPS) {
   }
   addSelect.appendChild(group);
 }
+
+// ─── Preload effect descriptions for dropdown tooltips ───
+(async () => {
+  for (const cat of EFFECT_GROUPS) {
+    for (const fx of cat.effects) {
+      await preloadEffect(fx.type);
+      const def = getEffectSync(fx.type);
+      if (def && def.description) {
+        const opt = addSelect.querySelector(`option[value="${fx.type}"]`);
+        if (opt) opt.title = def.description;
+      }
+    }
+  }
+})();
 
 // ─── Init ───
 renderStack();

@@ -42,6 +42,7 @@ export default {
   name: 'Quantization Blast',
   badge: 'COMP',
   badgeColor: '#cc66ff',
+  description: 'Applies real 8×8 DCT with aggressive quantization and frequency control.',
   params: [
     { key: 'quantize', label: 'Quantize', min: 1,   max: 128, step: 1, def: 32 },
     { key: 'hiBoost',  label: 'Hi Boost', min: 0,   max: 200, step: 5, def: 0 },

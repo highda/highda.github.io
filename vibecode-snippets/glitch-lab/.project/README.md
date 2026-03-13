@@ -27,6 +27,8 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | Slice Shuffle | Shuffles horizontal image slices |
 | Pixel Drift | Sine-wave displacement of rows/columns |
 | Echo Shift | Bitwise-blended offset copies (XOR/AND/OR ghosts) |
+| Block Scramble | Swaps random tile-grid blocks with nearby tiles (seeded) |
+| Mosaic Corrupt | Per-tile random corruption: flip, channel rotate, invert, neighbor copy (seeded) |
 
 ### Data / Bit
 | Effect | Description |
@@ -48,6 +50,8 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | Run-Length Smear | Simulates broken RLE decoder, stretches pixel runs |
 | Byte Repeat | Duplicates byte chunks, simulating stuck read head |
 | Byte Reverse | Reverses byte order within fixed-size buffer chunks |
+| Sector Fault | Simulates bad disk reads — random patches sourced from wrong byte offsets (seeded) |
+| Packet Loss | Simulates streaming corruption — row bands drop, shift, repeat, or XOR (seeded) |
 
 ### Compression
 | Effect | Description |

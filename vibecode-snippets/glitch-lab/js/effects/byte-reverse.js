@@ -6,6 +6,7 @@ export default {
   name: 'Byte Reverse',
   badge: 'BYTE',
   badgeColor: '#ff2200',
+  description: 'Reverses byte order within fixed-size chunks of the buffer.',
   params: [
     { key: 'chunkSize', label: 'Chunk', min: 8, max: 2048, step: 4, def: 128 },
     { key: 'skip',      label: 'Skip',  min: 0, max: 4,    step: 1, def: 1 },

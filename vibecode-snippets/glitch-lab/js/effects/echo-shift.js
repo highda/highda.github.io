@@ -5,6 +5,7 @@ export default {
   name: 'Echo Shift',
   badge: 'GEO',
   badgeColor: '#aaff44',
+  description: 'Creates offset ghost copies blended with bitwise operations (XOR, AND, OR).',
   params: [
     { key: 'copies',  label: 'Copies',  min: 1, max: 8,    step: 1, def: 3 },
     { key: 'offsetX', label: 'Off X',   min: -80, max: 80, step: 1, def: 12 },

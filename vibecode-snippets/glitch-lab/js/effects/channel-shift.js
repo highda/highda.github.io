@@ -2,6 +2,7 @@ export default {
   name: 'Channel Shift',
   badge: 'COLOR',
   badgeColor: '#ff3366',
+  description: 'Displaces R/B channels independently by a configurable pixel offset.',
   params: [
     { key: 'rx', label: 'Red X', min: -60, max: 60, step: 1, def: 8 },
     { key: 'ry', label: 'Red Y', min: -60, max: 60, step: 1, def: 0 },

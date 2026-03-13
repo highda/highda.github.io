@@ -2,6 +2,7 @@ export default {
   name: 'Pixel Drift',
   badge: 'GEO',
   badgeColor: '#aaff44',
+  description: 'Applies sine-wave displacement to rows or columns.',
   params: [
     { key: 'amplitude', label: 'Amp', min: 1, max: 80, step: 1, def: 15 },
     { key: 'frequency', label: 'Freq', min: 1, max: 100, step: 1, def: 20 },
