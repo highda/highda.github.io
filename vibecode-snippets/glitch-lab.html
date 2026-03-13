@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLITCH LAB</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111114;
+    --surface2: #18181c;
+    --border: #2a2a30;
+    --border-hi: #3a3a44;
+    --text: #c8c8d0;
+    --text-dim: #68687a;
+    --text-bright: #e8e8f0;
+    --accent: #ff3366;
+    --accent2: #00eeff;
+    --accent3: #aaff44;
+    --danger: #ff4444;
+    --green: #44ff88;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    gap: 0;
+  }
+
+  /* HEADER */
+  .header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--text-bright);
+  }
+  .logo span { color: var(--accent); }
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* BUTTONS */
+  button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button:hover {
+    border-color: var(--border-hi);
+    color: var(--text-bright);
+    background: #1e1e24;
+  }
+  button.active, button.primary { border-color: var(--accent); color: var(--accent); }
+  button.accent2 { border-color: var(--accent2); color: var(--accent2); }
+  button.small { padding: 4px 8px; font-size: 10px; }
+  button.icon-btn { padding: 5px 8px; font-size: 14px; line-height: 1; font-weight: 400; }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* CANVAS AREA */
+  .canvas-area {
+    position: relative;
+    overflow: hidden;
+    background:
+      repeating-conic-gradient(var(--surface) 0% 25%, var(--bg) 0% 50%) 0 0 / 20px 20px;
+    border-right: 1px solid var(--border);
+    cursor: grab;
+  }
+  .canvas-area:active { cursor: grabbing; }
+  .canvas-area canvas {
+    position: absolute;
+    top: 0; left: 0;
+    image-rendering: auto;
+    transform-origin: 0 0;
+    box-shadow: 0 0 60px rgba(255, 51, 102, 0.05), 0 0 2px rgba(0,0,0,0.8);
+  }
+
+  .drop-zone {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    z-index: 10;
+  }
+  .drop-zone .icon { font-size: 48px; color: var(--accent); opacity: 0.5; }
+  .drop-zone.dragover {
+    background: rgba(255, 51, 102, 0.05);
+    border: 2px dashed var(--accent);
+  }
+  .drop-zone.hidden { display: none; }
+
+  .zoom-indicator {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: rgba(10,10,12,0.75);
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-header h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .stack-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .stack-list::-webkit-scrollbar { width: 4px; }
+  .stack-list::-webkit-scrollbar-track { background: transparent; }
+  .stack-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .stack-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.6;
+  }
+
+  /* EFFECT CARD */
+  .fx-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    transition: border-color 0.15s, opacity 0.15s;
+    position: relative;
+  }
+  .fx-card:hover { border-color: var(--border-hi); }
+  .fx-card.dragging { opacity: 0.4; }
+  .fx-card.drag-over { border-color: var(--accent2); }
+  .fx-card.disabled { opacity: 0.4; }
+
+  .fx-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    user-select: none;
+  }
+  .fx-drag-handle {
+    color: var(--text-dim);
+    font-size: 10px;
+    flex-shrink: 0;
+    width: 16px;
+    text-align: center;
+    cursor: grab;
+  }
+  .fx-drag-handle:active { cursor: grabbing; }
+
+  .fx-name {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .fx-badge {
+    font-size: 9px;
+    padding: 2px 5px;
+    border: 1px solid;
+    letter-spacing: 1px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .fx-card-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .fx-card-body {
+    padding: 6px 10px 10px 34px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .fx-card.collapsed .fx-card-body { display: none; }
+
+  /* PARAM ROW */
+  .param-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .param-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 70px;
+    flex-shrink: 0;
+  }
+  .param-row input[type="range"] {
+    flex: 1;
+    height: 3px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  .param-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+  .param-row input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+  .param-value {
+    font-size: 10px;
+    color: var(--accent2);
+    width: 32px;
+    text-align: right;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .param-row select {
+    flex: 1;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    cursor: pointer;
+  }
+
+  /* ADD EFFECT PANEL */
+  .add-panel {
+    border-top: 1px solid var(--border);
+    padding: 10px;
+    flex-shrink: 0;
+  }
+  .add-panel select {
+    width: 100%;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 7px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .status-bar .render-time { color: var(--accent3); }
+  .status-bar .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 5px;
+    animation: pulse 1.5s infinite;
+  }
+  .status-bar .live-dot.paused { background: var(--danger); animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  @media (max-width: 800px) {
+    .app {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr 1fr auto;
+    }
+    .canvas-area { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="logo"><span>▓</span> GLITCH<span>LAB</span></div>
+    <div class="header-controls">
+      <button id="btn-live" class="active" onclick="toggleLive()">● Live</button>
+      <button id="btn-render" class="accent2" onclick="requestRender()">Render</button>
+      <button onclick="resetZoom()">Fit</button>
+      <button onclick="exportImage()">Export</button>
+      <button onclick="document.getElementById('file-input').click()">Load</button>
+      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFile(event)">
+    </div>
+  </div>
+
+  <div class="canvas-area" id="canvas-area">
+    <div class="drop-zone" id="drop-zone"
+         ondragover="event.preventDefault(); this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event)"
+         onclick="document.getElementById('file-input').click()">
+      <div class="icon">◈</div>
+      <div>Drop image or click to load</div>
+    </div>
+    <canvas id="canvas" style="display:none"></canvas>
+    <div class="zoom-indicator" id="zoom-indicator" style="display:none">100%</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Effect Stack</h2>
+      <span id="fx-count" style="font-size:10px;color:var(--accent)">0</span>
+    </div>
+    <div class="stack-list" id="stack-list"></div>
+    <div class="add-panel">
+      <select id="add-select" onchange="addEffect(this.value); this.value=''">
+        <option value="">+ Add Effect…</option>
+        <option value="channelShift">Channel Displacement</option>
+        <option value="pixelSort">Pixel Sort</option>
+        <option value="posterize">Posterize</option>
+        <option value="scanlines">Scanlines</option>
+        <option value="bitShift">Bit Shift</option>
+        <option value="sliceShuffle">Slice Shuffle</option>
+        <option value="pixelDrift">Pixel Drift</option>
+        <option value="bayerDither">Bayer Dither</option>
+        <option value="channelSwap">Channel Swap</option>
+        <option value="jpegCrush">JPEG Crush</option>
+        <option value="noise">Noise Injection</option>
+        <option value="feedback">Feedback</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div>
+      <span class="live-dot" id="live-dot"></span>
+      <span id="status-text">Ready</span>
+    </div>
+    <div>Render: <span class="render-time" id="render-time">—</span></div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+let sourceImage = null;
+let sourceData = null;
+let effectStack = [];
+let liveMode = true;
+let renderPending = false;
+let rendering = false;
+let uid = 0;
+let renderTimer = null;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const canvasArea = document.getElementById('canvas-area');
+
+// ─── ZOOM & PAN ───
+let zoom = 1;
+let panX = 0, panY = 0;
+let isPanning = false;
+let panStartX = 0, panStartY = 0;
+let panStartPanX = 0, panStartPanY = 0;
+
+function updateCanvasTransform() {
+  canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+  document.getElementById('zoom-indicator').textContent = Math.round(zoom * 100) + '%';
+}
+
+function resetZoom() {
+  if (!sourceImage) return;
+  const area = canvasArea.getBoundingClientRect();
+  const scaleX = (area.width - 40) / sourceImage.width;
+  const scaleY = (area.height - 40) / sourceImage.height;
+  zoom = Math.min(scaleX, scaleY, 1);
+  panX = (area.width - sourceImage.width * zoom) / 2;
+  panY = (area.height - sourceImage.height * zoom) / 2;
+  updateCanvasTransform();
+}
+
+canvasArea.addEventListener('wheel', (e) => {
+  if (!sourceImage) return;
+  e.preventDefault();
+  const rect = canvasArea.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const imgX = (mx - panX) / zoom;
+  const imgY = (my - panY) / zoom;
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  zoom = Math.min(20, Math.max(0.05, zoom * factor));
+  panX = mx - imgX * zoom;
+  panY = my - imgY * zoom;
+  updateCanvasTransform();
+}, { passive: false });
+
+canvasArea.addEventListener('mousedown', (e) => {
+  if (!sourceImage || e.target.closest('.drop-zone')) return;
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartY = e.clientY;
+  panStartPanX = panX;
+  panStartPanY = panY;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  panX = panStartPanX + (e.clientX - panStartX);
+  panY = panStartPanY + (e.clientY - panStartY);
+  updateCanvasTransform();
+});
+window.addEventListener('mouseup', () => { isPanning = false; });
+
+let lastTouchDist = 0;
+let lastTouchCenter = null;
+canvasArea.addEventListener('touchstart', (e) => {
+  if (!sourceImage) return;
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastTouchDist = Math.sqrt(dx * dx + dy * dy);
+    lastTouchCenter = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+    };
+  } else if (e.touches.length === 1) {
+    isPanning = true;
+    panStartX = e.touches[0].clientX;
+    panStartY = e.touches[0].clientY;
+    panStartPanX = panX;
+    panStartPanY = panY;
+  }
+}, { passive: false });
+canvasArea.addEventListener('touchmove', (e) => {
+  if (!sourceImage) return;
+  if (e.touches.length === 2 && lastTouchDist > 0) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const rect = canvasArea.getBoundingClientRect();
+    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    const imgX = (cx - panX) / zoom;
+    const imgY = (cy - panY) / zoom;
+    zoom = Math.min(20, Math.max(0.05, zoom * (dist / lastTouchDist)));
+    panX = cx - imgX * zoom;
+    panY = cy - imgY * zoom;
+    if (lastTouchCenter) {
+      const ncx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const ncy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      panX += ncx - lastTouchCenter.x;
+      panY += ncy - lastTouchCenter.y;
+      lastTouchCenter = { x: ncx, y: ncy };
+    }
+    lastTouchDist = dist;
+    updateCanvasTransform();
+  } else if (e.touches.length === 1 && isPanning) {
+    panX = panStartPanX + (e.touches[0].clientX - panStartX);
+    panY = panStartPanY + (e.touches[0].clientY - panStartY);
+    updateCanvasTransform();
+  }
+}, { passive: false });
+canvasArea.addEventListener('touchend', () => {
+  isPanning = false;
+  lastTouchDist = 0;
+  lastTouchCenter = null;
+});
+
+// ─── PIXEL SORT HELPERS ───
+function getPixelVal(r, g, b, mode) {
+  switch (mode) {
+    case 'brightness': return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    case 'hue': {
+      const rn = r / 255, gn = g / 255, bn = b / 255;
+      const mx = Math.max(rn, gn, bn), mn = Math.min(rn, gn, bn), d = mx - mn;
+      if (d === 0) return 0;
+      let h;
+      if (mx === rn) h = ((gn - bn) / d) % 6;
+      else if (mx === gn) h = (bn - rn) / d + 2;
+      else h = (rn - gn) / d + 4;
+      h /= 6; return h < 0 ? h + 1 : h;
+    }
+    case 'saturation': {
+      const rn = r / 255, gn = g / 255, bn = b / 255;
+      const mx = Math.max(rn, gn, bn);
+      return mx === 0 ? 0 : (mx - Math.min(rn, gn, bn)) / mx;
+    }
+    default: return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  }
+}
+
+// ─── EFFECT DEFINITIONS ───
+const EFFECTS = {
+  channelShift: {
+    name: 'Channel Shift',
+    badge: 'COLOR',
+    badgeColor: '#ff3366',
+    params: [
+      { key: 'rx', label: 'Red X', min: -60, max: 60, step: 1, def: 8 },
+      { key: 'ry', label: 'Red Y', min: -60, max: 60, step: 1, def: 0 },
+      { key: 'bx', label: 'Blue X', min: -60, max: 60, step: 1, def: -8 },
+      { key: 'by', label: 'Blue Y', min: -60, max: 60, step: 1, def: 0 },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src.length);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const rrx = Math.min(w - 1, Math.max(0, x - p.rx));
+          const rry = Math.min(h - 1, Math.max(0, y - p.ry));
+          out[i] = src[(rry * w + rrx) * 4];
+          out[i + 1] = src[i + 1];
+          const bbx = Math.min(w - 1, Math.max(0, x - p.bx));
+          const bby = Math.min(h - 1, Math.max(0, y - p.by));
+          out[i + 2] = src[(bby * w + bbx) * 4 + 2];
+          out[i + 3] = src[i + 3];
+        }
+      }
+      return out;
+    }
+  },
+
+  pixelSort: {
+    name: 'Pixel Sort',
+    badge: 'SORT',
+    badgeColor: '#00eeff',
+    params: [
+      { key: 'threshLo', label: 'Lo Thr', min: 0, max: 100, step: 1, def: 25 },
+      { key: 'threshHi', label: 'Hi Thr', min: 0, max: 100, step: 1, def: 80 },
+      { key: 'spanLen', label: 'Span %', min: 1, max: 100, step: 1, def: 80 },
+      { key: 'sortBy', label: 'Sort By', type: 'select', options: ['brightness', 'hue', 'saturation'], def: 'brightness' },
+      { key: 'direction', label: 'Dir', type: 'select', options: ['horizontal', 'vertical'], def: 'horizontal' },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src);
+      const lo = p.threshLo / 100;
+      const hi = p.threshHi / 100;
+      const horiz = p.direction === 'horizontal';
+      const outer = horiz ? h : w;
+      const inner = horiz ? w : h;
+      const maxSpanFrac = p.spanLen / 100;
+
+      for (let o = 0; o < outer; o++) {
+        const maxSpanPx = Math.max(2, Math.floor(inner * maxSpanFrac));
+        let n = 0;
+        while (n < inner) {
+          const x0 = horiz ? n : o;
+          const y0 = horiz ? o : n;
+          const i0 = (y0 * w + x0) * 4;
+          const v0 = getPixelVal(src[i0], src[i0 + 1], src[i0 + 2], p.sortBy);
+
+          if (v0 < lo || v0 > hi) { n++; continue; }
+
+          const start = n;
+          const limit = Math.min(inner, start + maxSpanPx);
+          const span = [];
+          while (n < limit) {
+            const x = horiz ? n : o;
+            const y = horiz ? o : n;
+            const idx = (y * w + x) * 4;
+            const v = getPixelVal(src[idx], src[idx + 1], src[idx + 2], p.sortBy);
+            if (v < lo || v > hi) break;
+            span.push({ x, y, v, r: src[idx], g: src[idx + 1], b: src[idx + 2], a: src[idx + 3] });
+            n++;
+          }
+
+          if (span.length < 2) continue;
+
+          const positions = span.map(px => ({ x: px.x, y: px.y }));
+          span.sort((a, b) => a.v - b.v);
+
+          for (let k = 0; k < span.length; k++) {
+            const di = (positions[k].y * w + positions[k].x) * 4;
+            out[di] = span[k].r;
+            out[di + 1] = span[k].g;
+            out[di + 2] = span[k].b;
+            out[di + 3] = span[k].a;
+          }
+        }
+      }
+      return out;
+    }
+  },
+
+  posterize: {
+    name: 'Posterize',
+    badge: 'COLOR',
+    badgeColor: '#ff3366',
+    params: [
+      { key: 'levels', label: 'Levels', min: 2, max: 32, step: 1, def: 6 },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src.length);
+      const step = 255 / (p.levels - 1);
+      for (let i = 0; i < src.length; i += 4) {
+        out[i] = Math.round(Math.round(src[i] / step) * step);
+        out[i + 1] = Math.round(Math.round(src[i + 1] / step) * step);
+        out[i + 2] = Math.round(Math.round(src[i + 2] / step) * step);
+        out[i + 3] = src[i + 3];
+      }
+      return out;
+    }
+  },
+
+  scanlines: {
+    name: 'Scanlines',
+    badge: 'GEO',
+    badgeColor: '#aaff44',
+    params: [
+      { key: 'spacing', label: 'Spacing', min: 2, max: 16, step: 1, def: 3 },
+      { key: 'opacity', label: 'Opacity', min: 0, max: 100, step: 1, def: 40 },
+      { key: 'offset', label: 'Offset', min: 0, max: 8, step: 1, def: 0 },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src);
+      const mul = 1 - p.opacity / 100;
+      for (let y = 0; y < h; y++) {
+        if ((y + p.offset) % p.spacing === 0) {
+          for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+            out[i] = src[i] * mul;
+            out[i + 1] = src[i + 1] * mul;
+            out[i + 2] = src[i + 2] * mul;
+          }
+        }
+      }
+      return out;
+    }
+  },
+
+  bitShift: {
+    name: 'Bit Shift',
+    badge: 'DATA',
+    badgeColor: '#ff9900',
+    params: [
+      { key: 'shift', label: 'Shift', min: 1, max: 7, step: 1, def: 2 },
+      { key: 'channel', label: 'Channel', type: 'select', options: ['red', 'green', 'blue', 'all'], def: 'red' },
+      { key: 'mode', label: 'Mode', type: 'select', options: ['left', 'right', 'xor'], def: 'left' },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src);
+      for (let i = 0; i < src.length; i += 4) {
+        const channels = p.channel === 'all' ? [0, 1, 2] :
+          p.channel === 'red' ? [0] : p.channel === 'green' ? [1] : [2];
+        for (const c of channels) {
+          if (p.mode === 'left') out[i + c] = (src[i + c] << p.shift) & 255;
+          else if (p.mode === 'right') out[i + c] = (src[i + c] >> p.shift) & 255;
+          else out[i + c] = (src[i + c] ^ (p.shift * 37)) & 255;
+        }
+        out[i + 3] = src[i + 3];
+      }
+      return out;
+    }
+  },
+
+  sliceShuffle: {
+    name: 'Slice Shuffle',
+    badge: 'GEO',
+    badgeColor: '#aaff44',
+    params: [
+      { key: 'slices', label: 'Slices', min: 4, max: 80, step: 1, def: 20 },
+      { key: 'intensity', label: 'Intensity', min: 0, max: 100, step: 1, def: 50 },
+      { key: 'seed', label: 'Seed', min: 1, max: 999, step: 1, def: 42 },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src.length);
+      const sliceH = Math.max(1, Math.floor(h / p.slices));
+      let rng = p.seed;
+      const rand = () => { rng = (rng * 16807 + 0) % 2147483647; return rng / 2147483647; };
+
+      const sliceCount = Math.ceil(h / sliceH);
+      const order = Array.from({ length: sliceCount }, (_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) {
+        if (rand() < p.intensity / 100) {
+          const j = Math.floor(rand() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+      }
+      for (let s = 0; s < sliceCount; s++) {
+        const srcStart = order[s] * sliceH;
+        const dstStart = s * sliceH;
+        for (let row = 0; row < sliceH; row++) {
+          const sy = Math.min(srcStart + row, h - 1);
+          const dy = Math.min(dstStart + row, h - 1);
+          out.set(src.subarray(sy * w * 4, sy * w * 4 + w * 4), dy * w * 4);
+        }
+      }
+      return out;
+    }
+  },
+
+  pixelDrift: {
+    name: 'Pixel Drift',
+    badge: 'GEO',
+    badgeColor: '#aaff44',
+    params: [
+      { key: 'amplitude', label: 'Amp', min: 1, max: 80, step: 1, def: 15 },
+      { key: 'frequency', label: 'Freq', min: 1, max: 100, step: 1, def: 20 },
+      { key: 'phase', label: 'Phase', min: 0, max: 628, step: 1, def: 0 },
+      { key: 'direction', label: 'Dir', type: 'select', options: ['horizontal', 'vertical'], def: 'horizontal' },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src.length);
+      const phase = p.phase / 100;
+      const horiz = p.direction === 'horizontal';
+
+      if (horiz) {
+        for (let y = 0; y < h; y++) {
+          const shift = Math.round(Math.sin(y / (h / p.frequency) * Math.PI * 2 + phase) * p.amplitude);
+          for (let x = 0; x < w; x++) {
+            const sx = ((x - shift) % w + w) % w;
+            const si = (y * w + sx) * 4;
+            const di = (y * w + x) * 4;
+            out[di] = src[si]; out[di + 1] = src[si + 1];
+            out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3];
+          }
+        }
+      } else {
+        for (let x = 0; x < w; x++) {
+          const shift = Math.round(Math.sin(x / (w / p.frequency) * Math.PI * 2 + phase) * p.amplitude);
+          for (let y = 0; y < h; y++) {
+            const sy = ((y - shift) % h + h) % h;
+            const si = (sy * w + x) * 4;
+            const di = (y * w + x) * 4;
+            out[di] = src[si]; out[di + 1] = src[si + 1];
+            out[di + 2] = src[si + 2]; out[di + 3] = src[si + 3];
+          }
+        }
+      }
+      return out;
+    }
+  },
+
+  bayerDither: {
+    name: 'Bayer Dither',
+    badge: 'DATA',
+    badgeColor: '#ff9900',
+    params: [
+      { key: 'levels', label: 'Levels', min: 2, max: 16, step: 1, def: 4 },
+      { key: 'scale', label: 'Scale', min: 1, max: 8, step: 1, def: 1 },
+    ],
+    apply(src, p, w, h) {
+      const bayer4 = [
+        [0, 8, 2, 10],
+        [12, 4, 14, 6],
+        [3, 11, 1, 9],
+        [15, 7, 13, 5],
+      ];
+      const out = new Uint8ClampedArray(src.length);
+      const step = 255 / (p.levels - 1);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const bx = Math.floor(x / p.scale) % 4;
+          const by = Math.floor(y / p.scale) % 4;
+          const threshold = (bayer4[by][bx] / 16 - 0.5) * step;
+          out[i] = Math.min(255, Math.max(0, Math.round((src[i] + threshold) / step) * step));
+          out[i + 1] = Math.min(255, Math.max(0, Math.round((src[i + 1] + threshold) / step) * step));
+          out[i + 2] = Math.min(255, Math.max(0, Math.round((src[i + 2] + threshold) / step) * step));
+          out[i + 3] = src[i + 3];
+        }
+      }
+      return out;
+    }
+  },
+
+  channelSwap: {
+    name: 'Channel Swap',
+    badge: 'COLOR',
+    badgeColor: '#ff3366',
+    params: [
+      {
+        key: 'mode', label: 'Mode', type: 'select',
+        options: ['RGB→BRG', 'RGB→GBR', 'RGB→RBG', 'RGB→BGR', 'RGB→GRB'], def: 'RGB→BRG'
+      },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src.length);
+      const maps = {
+        'RGB→BRG': [2, 0, 1], 'RGB→GBR': [1, 2, 0], 'RGB→RBG': [0, 2, 1],
+        'RGB→BGR': [2, 1, 0], 'RGB→GRB': [1, 0, 2],
+      };
+      const m = maps[p.mode] || [0, 1, 2];
+      for (let i = 0; i < src.length; i += 4) {
+        out[i] = src[i + m[0]]; out[i + 1] = src[i + m[1]];
+        out[i + 2] = src[i + m[2]]; out[i + 3] = src[i + 3];
+      }
+      return out;
+    }
+  },
+
+  jpegCrush: {
+    name: 'JPEG Crush',
+    badge: 'COMP',
+    badgeColor: '#cc66ff',
+    params: [
+      { key: 'quality', label: 'Quality', min: 1, max: 50, step: 1, def: 5 },
+      { key: 'iterations', label: 'Iters', min: 1, max: 8, step: 1, def: 3 },
+    ],
+    apply(src, p, w, h) {
+      // Returns a Promise — the render engine awaits it
+      const tc = document.createElement('canvas');
+      tc.width = w; tc.height = h;
+      const tctx = tc.getContext('2d');
+      tctx.putImageData(new ImageData(new Uint8ClampedArray(src), w, h), 0, 0);
+
+      async function crush() {
+        for (let iter = 0; iter < p.iterations; iter++) {
+          const blob = await new Promise(resolve =>
+            tc.toBlob(resolve, 'image/jpeg', p.quality / 100)
+          );
+          const bitmap = await createImageBitmap(blob);
+          tctx.clearRect(0, 0, w, h);
+          tctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+        }
+        return tctx.getImageData(0, 0, w, h).data;
+      }
+      return crush();
+    }
+  },
+
+  noise: {
+    name: 'Noise',
+    badge: 'DATA',
+    badgeColor: '#ff9900',
+    params: [
+      { key: 'amount', label: 'Amount', min: 1, max: 120, step: 1, def: 30 },
+      { key: 'mono', label: 'Type', type: 'select', options: ['color', 'mono'], def: 'mono' },
+      { key: 'seed', label: 'Seed', min: 1, max: 999, step: 1, def: 1 },
+    ],
+    apply(src, p, w, h) {
+      const out = new Uint8ClampedArray(src);
+      let rng = p.seed;
+      const rand = () => { rng = (rng * 16807 + 0) % 2147483647; return (rng / 2147483647) * 2 - 1; };
+      for (let i = 0; i < src.length; i += 4) {
+        if (p.mono === 'mono') {
+          const n = rand() * p.amount;
+          out[i] = Math.min(255, Math.max(0, src[i] + n));
+          out[i + 1] = Math.min(255, Math.max(0, src[i + 1] + n));
+          out[i + 2] = Math.min(255, Math.max(0, src[i + 2] + n));
+        } else {
+          out[i] = Math.min(255, Math.max(0, src[i] + rand() * p.amount));
+          out[i + 1] = Math.min(255, Math.max(0, src[i + 1] + rand() * p.amount));
+          out[i + 2] = Math.min(255, Math.max(0, src[i + 2] + rand() * p.amount));
+        }
+      }
+      return out;
+    }
+  },
+
+  feedback: {
+    name: 'Feedback',
+    badge: 'META',
+    badgeColor: '#ff6600',
+    params: [
+      { key: 'iterations', label: 'Iters', min: 1, max: 12, step: 1, def: 3 },
+      { key: 'zoom', label: 'Zoom', min: 100, max: 130, step: 1, def: 105 },
+      { key: 'rotation', label: 'Rotate', min: -30, max: 30, step: 1, def: 2 },
+      { key: 'alpha', label: 'Mix', min: 5, max: 95, step: 1, def: 50 },
+    ],
+    apply(src, p, w, h) {
+      const tc = document.createElement('canvas');
+      tc.width = w; tc.height = h;
+      const tctx = tc.getContext('2d');
+      tctx.putImageData(new ImageData(new Uint8ClampedArray(src), w, h), 0, 0);
+
+      const scale = p.zoom / 100;
+      const angle = p.rotation * Math.PI / 180;
+
+      for (let iter = 0; iter < p.iterations; iter++) {
+        const tc2 = document.createElement('canvas');
+        tc2.width = w; tc2.height = h;
+        const tctx2 = tc2.getContext('2d');
+        tctx2.drawImage(tc, 0, 0);
+        tctx2.globalAlpha = p.alpha / 100;
+        tctx2.translate(w / 2, h / 2);
+        tctx2.rotate(angle);
+        tctx2.scale(scale, scale);
+        tctx2.translate(-w / 2, -h / 2);
+        tctx2.drawImage(tc, 0, 0);
+        tctx.clearRect(0, 0, w, h);
+        tctx.drawImage(tc2, 0, 0);
+      }
+
+      return tctx.getImageData(0, 0, w, h).data;
+    }
+  },
+};
+
+// ─── IMAGE HANDLING ───
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) loadImage(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadImage(file);
+}
+
+function loadImage(file) {
+  const img = new Image();
+  img.onload = () => {
+    let w = img.width, h = img.height;
+    const maxDim = 1200;
+    if (w > maxDim || h > maxDim) {
+      const ratio = Math.min(maxDim / w, maxDim / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, w, h);
+    sourceData = ctx.getImageData(0, 0, w, h).data;
+    sourceImage = { width: w, height: h };
+    document.getElementById('drop-zone').classList.add('hidden');
+    canvas.style.display = 'block';
+    document.getElementById('zoom-indicator').style.display = 'block';
+    resetZoom();
+    scheduleRender();
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+// ─── EFFECT STACK MANAGEMENT ───
+function addEffect(type) {
+  if (!type || !EFFECTS[type]) return;
+  const def = EFFECTS[type];
+  const params = {};
+  def.params.forEach(p => { params[p.key] = p.def; });
+  effectStack.push({ id: ++uid, type, params, enabled: true, collapsed: false });
+  renderStack();
+  scheduleRender();
+}
+
+function removeEffect(id) {
+  effectStack = effectStack.filter(f => f.id !== id);
+  renderStack();
+  scheduleRender();
+}
+
+function toggleEffect(id) {
+  const fx = effectStack.find(f => f.id === id);
+  if (fx) { fx.enabled = !fx.enabled; renderStack(); scheduleRender(); }
+}
+
+function toggleCollapse(id) {
+  const fx = effectStack.find(f => f.id === id);
+  if (fx) { fx.collapsed = !fx.collapsed; renderStack(); }
+}
+
+function duplicateEffect(id) {
+  const fx = effectStack.find(f => f.id === id);
+  if (fx) {
+    const clone = { id: ++uid, type: fx.type, params: { ...fx.params }, enabled: true, collapsed: false };
+    effectStack.splice(effectStack.indexOf(fx) + 1, 0, clone);
+    renderStack();
+    scheduleRender();
+  }
+}
+
+function updateParam(id, key, value) {
+  const fx = effectStack.find(f => f.id === id);
+  if (fx) {
+    fx.params[key] = isNaN(Number(value)) ? value : Number(value);
+    const valEl = document.getElementById(`val-${id}-${key}`);
+    if (valEl) valEl.textContent = value;
+    scheduleRender();
+  }
+}
+
+// ─── DRAG & DROP REORDER ───
+let dragId = null;
+
+function onDragStart(e, id) {
+  dragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(id));
+  const card = e.target.closest('.fx-card');
+  if (card) card.classList.add('dragging');
+}
+
+function onDragEnd() {
+  dragId = null;
+  document.querySelectorAll('.fx-card').forEach(c => c.classList.remove('dragging', 'drag-over'));
+}
+
+function onDragOver(e, id) {
+  e.preventDefault();
+  if (dragId === id || dragId === null) return;
+  const card = e.target.closest('.fx-card');
+  if (card) card.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  const card = e.target.closest('.fx-card');
+  if (card) card.classList.remove('drag-over');
+}
+
+function onDrop(e, id) {
+  e.preventDefault();
+  if (dragId === null || dragId === id) return;
+  const fromIdx = effectStack.findIndex(f => f.id === dragId);
+  const toIdx = effectStack.findIndex(f => f.id === id);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [item] = effectStack.splice(fromIdx, 1);
+  effectStack.splice(toIdx, 0, item);
+  dragId = null;
+  renderStack();
+  scheduleRender();
+}
+
+// ─── RENDER STACK UI ───
+function renderStack() {
+  const list = document.getElementById('stack-list');
+  document.getElementById('fx-count').textContent = effectStack.length;
+
+  if (effectStack.length === 0) {
+    list.innerHTML = '<div class="stack-empty">No effects added</div>';
+    return;
+  }
+
+  list.innerHTML = effectStack.map((fx) => {
+    const def = EFFECTS[fx.type];
+    const disabledClass = fx.enabled ? '' : 'disabled';
+    const collapsedClass = fx.collapsed ? 'collapsed' : '';
+    const eyeIcon = fx.enabled ? '◉' : '○';
+    const chevron = fx.collapsed ? '▸' : '▾';
+
+    let paramsHtml = '';
+    def.params.forEach(p => {
+      if (p.type === 'select') {
+        const opts = p.options.map(o =>
+          `<option value="${o}" ${fx.params[p.key] === o ? 'selected' : ''}>${o}</option>`
+        ).join('');
+        paramsHtml += `
+          <div class="param-row">
+            <span class="param-label">${p.label}</span>
+            <select onchange="updateParam(${fx.id}, '${p.key}', this.value)">${opts}</select>
+          </div>`;
+      } else {
+        paramsHtml += `
+          <div class="param-row">
+            <span class="param-label">${p.label}</span>
+            <input type="range" min="${p.min}" max="${p.max}" step="${p.step}"
+                   value="${fx.params[p.key]}"
+                   oninput="updateParam(${fx.id}, '${p.key}', this.value)">
+            <span class="param-value" id="val-${fx.id}-${p.key}">${fx.params[p.key]}</span>
+          </div>`;
+      }
+    });
+
+    return `
+      <div class="fx-card ${disabledClass} ${collapsedClass}"
+           ondragover="onDragOver(event, ${fx.id})"
+           ondragleave="onDragLeave(event)"
+           ondrop="onDrop(event, ${fx.id})">
+        <div class="fx-card-header">
+          <span class="fx-drag-handle" draggable="true"
+                ondragstart="onDragStart(event, ${fx.id})"
+                ondragend="onDragEnd()">⠿</span>
+          <span class="fx-name" onclick="toggleCollapse(${fx.id})">
+            <span style="color:var(--text-dim);font-size:9px;margin-right:4px">${chevron}</span>
+            ${def.name}
+          </span>
+          <span class="fx-badge" style="border-color:${def.badgeColor};color:${def.badgeColor}">${def.badge}</span>
+          <div class="fx-card-actions">
+            <button class="icon-btn small" onclick="toggleEffect(${fx.id})" title="Toggle">${eyeIcon}</button>
+            <button class="icon-btn small" onclick="duplicateEffect(${fx.id})" title="Duplicate">⧉</button>
+            <button class="icon-btn small danger" onclick="removeEffect(${fx.id})" title="Remove">✕</button>
+          </div>
+        </div>
+        <div class="fx-card-body">${paramsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── ASYNC RENDERING ENGINE ───
+function scheduleRender() {
+  if (!sourceImage) return;
+  if (liveMode) {
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(doRender, 30);
+  } else {
+    renderPending = true;
+    document.getElementById('status-text').textContent = 'Pending…';
+  }
+}
+
+function requestRender() {
+  if (!sourceImage) return;
+  doRender();
+}
+
+async function doRender() {
+  if (!sourceImage || rendering) { renderPending = true; return; }
+  rendering = true;
+  renderPending = false;
+  const t0 = performance.now();
+  const w = sourceImage.width, h = sourceImage.height;
+
+  let data = new Uint8ClampedArray(sourceData);
+
+  for (const fx of effectStack) {
+    if (!fx.enabled) continue;
+    const def = EFFECTS[fx.type];
+    try {
+      const result = def.apply(data, fx.params, w, h);
+      data = (result instanceof Promise) ? await result : result;
+    } catch (e) {
+      console.warn(`Effect ${fx.type} failed:`, e);
+    }
+  }
+
+  ctx.putImageData(new ImageData(data, w, h), 0, 0);
+
+  const elapsed = (performance.now() - t0).toFixed(1);
+  document.getElementById('render-time').textContent = elapsed + 'ms';
+  document.getElementById('status-text').textContent =
+    effectStack.filter(f => f.enabled).length + ' effects applied';
+  rendering = false;
+
+  if (renderPending && liveMode) {
+    renderPending = false;
+    doRender();
+  }
+}
+
+function toggleLive() {
+  liveMode = !liveMode;
+  const btn = document.getElementById('btn-live');
+  const dot = document.getElementById('live-dot');
+  btn.classList.toggle('active', liveMode);
+  btn.textContent = liveMode ? '● Live' : '○ Paused';
+  dot.classList.toggle('paused', !liveMode);
+  if (liveMode && renderPending) doRender();
+}
+
+function exportImage() {
+  if (!sourceImage) return;
+  const link = document.createElement('a');
+  link.download = 'glitched.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ─── INIT ───
+renderStack();
+</script>
+</body>
+</html>
