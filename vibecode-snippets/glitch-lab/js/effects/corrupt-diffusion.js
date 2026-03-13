@@ -29,6 +29,10 @@ export default {
     { key: 'errMul',    label: 'Err Mul', min: 10, max: 400, step: 10, def: 100 },
     { key: 'direction', label: 'Dir',    type: 'select', options: ['normal', 'reverse', 'down-up', 'outward'], def: 'normal' },
     { key: 'channel',   label: 'Channel', type: 'select', options: ['all', 'red', 'green', 'blue'], def: 'all' },
+    { key: 'serpentine', label: 'Serpentine', type: 'select', options: ['off', 'on'], def: 'off' },
+    { key: 'errDecay',  label: 'Err Decay', min: 50, max: 150, step: 1, def: 100 },
+    { key: 'bleed',     label: 'Ch Bleed', min: 0, max: 100, step: 1, def: 0 },
+    { key: 'skipRows',  label: 'Row Skip', min: 1, max: 32, step: 1, def: 1 },
   ],
   apply(src, p, w, h) {
     const out = new Uint8ClampedArray(src);
@@ -36,52 +40,87 @@ export default {
       p.channel === 'red' ? [0] : p.channel === 'green' ? [1] : [2];
     const step = 255 / (p.levels - 1);
     const errMul = p.errMul / 100;
+    const errDecay = p.errDecay / 100;
+    const bleed = p.bleed / 100;
+    const skipRows = p.skipRows;
+    const serpentine = p.serpentine === 'on';
     const baseKernel = KERNELS[p.algo];
 
     // Build corrupted kernel based on direction
     const kernel = baseKernel.map(([dx, dy, wt]) => {
       switch (p.direction) {
-        case 'reverse':  return [-dx, -dy, wt];     // diffuse backwards
-        case 'down-up':  return [dx, -dy, wt];       // flip vertical
-        case 'outward':  return [dy, dx, wt];         // rotate 90°
+        case 'reverse':  return [-dx, -dy, wt];
+        case 'down-up':  return [dx, -dy, wt];
+        case 'outward':  return [dy, dx, wt];
         default:         return [dx, dy, wt];
       }
     });
 
-    for (const ch of channels) {
-      // Working copy as floats to accumulate error
+    // Build float buffers for all active channels (needed for cross-channel bleed)
+    const bufs = channels.map(ch => {
       const buf = new Float32Array(w * h);
       for (let i = 0; i < w * h; i++) buf[i] = out[i * 4 + ch];
+      return buf;
+    });
 
-      // Scan order depends on direction (reverse scans bottom-right to top-left)
-      const reverse = p.direction === 'reverse';
-      const yStart = reverse ? h - 1 : 0;
-      const yEnd = reverse ? -1 : h;
-      const yStep = reverse ? -1 : 1;
-      const xStart = reverse ? w - 1 : 0;
-      const xEnd = reverse ? -1 : w;
-      const xStep = reverse ? -1 : 1;
+    // Scan order depends on direction (reverse scans bottom-right to top-left)
+    const reverse = p.direction === 'reverse';
+    const yStart = reverse ? h - 1 : 0;
+    const yEnd = reverse ? -1 : h;
+    const yStep = reverse ? -1 : 1;
 
-      for (let y = yStart; y !== yEnd; y += yStep) {
-        for (let x = xStart; x !== xEnd; x += xStep) {
-          const idx = y * w + x;
+    for (let y = yStart; y !== yEnd; y += yStep) {
+      // Skip rows that don't match the skip pattern
+      const rowIndex = reverse ? (h - 1 - y) : y;
+      if (skipRows > 1 && (rowIndex % skipRows) !== 0) continue;
+
+      // Serpentine: flip x direction on alternating rows
+      const rowEven = (rowIndex & 1) === 0;
+      const flipX = serpentine && !rowEven;
+      const baseReverse = reverse;
+      const xForward = baseReverse !== flipX; // XOR: flip if either but not both
+      const xStart = xForward ? w - 1 : 0;
+      const xEnd = xForward ? -1 : w;
+      const xStep = xForward ? -1 : 1;
+
+      for (let x = xStart; x !== xEnd; x += xStep) {
+        const idx = y * w + x;
+
+        for (let ci = 0; ci < channels.length; ci++) {
+          const buf = bufs[ci];
           const oldVal = buf[idx];
           const newVal = Math.round(oldVal / step) * step;
           buf[idx] = newVal;
           const err = (oldVal - newVal) * errMul;
 
-          // Diffuse error to neighbors
+          // Apply directional kernel, flipping dx for serpentine odd rows
+          const xMul = flipX ? -1 : 1;
+
           for (const [dx, dy, wt] of kernel) {
-            const nx = x + dx;
+            const nx = x + dx * xMul;
             const ny = y + dy;
             if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-              buf[ny * w + nx] += err * wt;
+              const nIdx = ny * w + nx;
+              buf[nIdx] += err * wt * errDecay;
+
+              // Cross-channel bleed: leak error into other active channels
+              if (bleed > 0 && channels.length > 1) {
+                for (let oi = 0; oi < channels.length; oi++) {
+                  if (oi !== ci) {
+                    bufs[oi][nIdx] += err * wt * errDecay * bleed;
+                  }
+                }
+              }
             }
           }
         }
       }
+    }
 
-      // Write back clamped
+    // Write back clamped
+    for (let ci = 0; ci < channels.length; ci++) {
+      const ch = channels[ci];
+      const buf = bufs[ci];
       for (let i = 0; i < w * h; i++) {
         out[i * 4 + ch] = buf[i] < 0 ? 0 : buf[i] > 255 ? 255 : Math.round(buf[i]);
       }

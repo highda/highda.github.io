@@ -65,3 +65,4 @@ Edit `js/render.js`. Controls debounced live rendering, manual render, and the l
 - **Effects must be deterministic.** Same input + same params = same output. No render history, timestamps, or random state without a seed parameter.
 - **After structural changes**, update `.project/STRUCTURE.md` (directory tree and dependency graph).
 - **After functional changes** (new effects, new features), update `.project/README.md`.
+- **Always update docs before finishing.** After every successful code edit, check whether `.project/README.md` or `.project/STRUCTURE.md` need updating and do so in the same response. Do not consider the task complete until docs are in sync.

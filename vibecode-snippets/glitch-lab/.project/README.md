@@ -38,7 +38,7 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | XOR Fold | XORs pixels with mirrored/offset counterparts |
 | Bit Mask Stencil | Apply user-defined binary mask to channel bytes |
 | Value Sort | Sort channel values per-row/column/full image |
-| Corrupt Diffusion | Error-diffusion dithering (Floyd-Steinberg/Atkinson/Sierra) with corrupted error propagation |
+| Corrupt Diffusion | Error-diffusion dithering (Floyd-Steinberg/Atkinson/Sierra) with corrupted error propagation, serpentine scanning, error decay/amplification, cross-channel bleed, and row-skip banding |
 
 ### Byte / Raw
 | Effect | Description |
