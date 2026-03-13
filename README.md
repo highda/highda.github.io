@@ -6,7 +6,7 @@
 
 [Pixel Sorter on Steroids](/vibecode-snippets/pixel-sorter.html)
 
-[Glitch Lab (Multi-FX)](/vibecode-snippets/glitch-lab.html)
+[Glitch Lab (Multi-FX)](/vibecode-snippets/glitch-lab/index.html)
 
 ### CSS Helpers
 
