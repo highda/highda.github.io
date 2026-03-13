@@ -27,6 +27,7 @@ const EFFECT_PATHS = {
   byteRepeat:    './byte-repeat.js',
   byteReverse:   './byte-reverse.js',
   quantBlast:    './quantization-blast.js',
+  corruptDiffusion:'./corrupt-diffusion.js',
 };
 
 /** Cache of loaded effect definitions. */
@@ -86,6 +87,7 @@ export const EFFECT_GROUPS = [
     { type: 'xorFold',       label: 'XOR Fold' },
     { type: 'bitMaskStencil', label: 'Bit Mask Stencil' },
     { type: 'valueSort',     label: 'Value Sort' },
+    { type: 'corruptDiffusion', label: 'Corrupt Diffusion' },
   ]},
   { group: 'Byte / Raw', effects: [
     { type: 'bufferMisalign', label: 'Buffer Misalign' },
