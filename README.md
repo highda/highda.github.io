@@ -4,4 +4,6 @@
 
 [Convert to CGA v2 (JS Mediabunny, Video support)](/vibecode-snippets/convertto-cga-v2.html)
 
+[Pixel Sorter on Steroids](/vibecode-snippets/pixel-sorter.html)
+
 [CSS mask-image gradient compositor](/vibecode-snippets/gradient-maskimage-compositor.html)
