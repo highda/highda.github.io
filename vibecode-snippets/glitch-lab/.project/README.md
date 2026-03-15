@@ -18,6 +18,9 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | Channel Swap | Remaps RGB channels (BRG, GBR, etc.) |
 | Posterize | Reduces color levels |
 | Threshold Gate | Per-channel binary threshold (below=0, above=255) |
+| Chromatic Split | Offsets RGB channels radially from a focal point (chromatic aberration) |
+| Edge Glow | Detects edges with Sobel and overlays a colorized neon glow |
+| Color Cycle | Rotates hue and shifts saturation/lightness uniformly |
 
 ### Geometry
 | Effect | Description |
@@ -29,6 +32,8 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | Echo Shift | Bitwise-blended offset copies (XOR/AND/OR ghosts) |
 | Block Scramble | Swaps random tile-grid blocks with nearby tiles (seeded) |
 | Mosaic Corrupt | Per-tile random corruption: flip, channel rotate, invert, neighbor copy (seeded) |
+| Symmetry Force | Forces mirror symmetry by copying one half or quadrant over the other |
+| Kaleidoscope | Mirrors a wedge slice around the center point to create kaleidoscope symmetry |
 
 ### Data / Bit
 | Effect | Description |
@@ -63,6 +68,10 @@ A browser-based glitch art tool for applying destructive image effects in real-t
 | Effect | Description |
 |--------|-------------|
 | Feedback | Recursive zoom/rotate overlay |
+| Pixel Echo | Layers multiple offset/scaled ghost copies with selectable blend modes |
+| Self-Diff | Diffs the image against a transformed copy of itself to reveal hidden structure |
+| Recursive Crop | Pastes progressively smaller copies of the image into itself (Droste-like) |
+| Convolution Corrupt | Applies a broken convolution kernel with asymmetry and directional smearing (seeded) |
 
 ## Running
 

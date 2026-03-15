@@ -32,6 +32,15 @@ const EFFECT_PATHS = {
   sectorFault:     './sector-fault.js',
   mosaicCorrupt:   './mosaic-corrupt.js',
   packetLoss:      './packet-loss.js',
+  symmetryForce:   './symmetry-force.js',
+  kaleidoscope:    './kaleidoscope.js',
+  chromaticSplit:  './chromatic-split.js',
+  edgeGlow:        './edge-glow.js',
+  colorCycle:      './color-cycle.js',
+  pixelEcho:       './pixel-echo.js',
+  selfDiff:        './self-diff.js',
+  recursiveCrop:   './recursive-crop.js',
+  convCorrupt:     './convolution-corrupt.js',
 };
 
 /** Cache of loaded effect definitions. */
@@ -75,6 +84,9 @@ export const EFFECT_GROUPS = [
     { type: 'channelSwap',   label: 'Channel Swap' },
     { type: 'posterize',     label: 'Posterize' },
     { type: 'thresholdGate', label: 'Threshold Gate' },
+    { type: 'chromaticSplit', label: 'Chromatic Split' },
+    { type: 'edgeGlow',       label: 'Edge Glow' },
+    { type: 'colorCycle',     label: 'Color Cycle' },
   ]},
   { group: 'Geometry', effects: [
     { type: 'pixelSort',     label: 'Pixel Sort' },
@@ -84,6 +96,8 @@ export const EFFECT_GROUPS = [
     { type: 'echoShift',    label: 'Echo Shift' },
     { type: 'blockScramble', label: 'Block Scramble' },
     { type: 'mosaicCorrupt', label: 'Mosaic Corrupt' },
+    { type: 'symmetryForce',  label: 'Symmetry Force' },
+    { type: 'kaleidoscope',   label: 'Kaleidoscope' },
   ]},
   { group: 'Data / Bit', effects: [
     { type: 'bitShift',      label: 'Bit Shift' },
@@ -109,6 +123,10 @@ export const EFFECT_GROUPS = [
     { type: 'quantBlast',   label: 'Quantization Blast' },
   ]},
   { group: 'Meta', effects: [
-    { type: 'feedback',      label: 'Feedback' },
+    { type: 'feedback',       label: 'Feedback' },
+    { type: 'pixelEcho',      label: 'Pixel Echo' },
+    { type: 'selfDiff',       label: 'Self-Diff' },
+    { type: 'recursiveCrop',  label: 'Recursive Crop' },
+    { type: 'convCorrupt',    label: 'Convolution Corrupt' },
   ]},
 ];

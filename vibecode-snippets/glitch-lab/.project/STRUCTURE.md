@@ -24,6 +24,9 @@ glitch-lab/
 │       ├── channel-swap.js     # Remap RGB channels
 │       ├── posterize.js        # Reduce color levels
 │       ├── channel-threshold-gate.js # Per-channel binary threshold
+│       ├── chromatic-split.js  # Radial RGB channel displacement
+│       ├── edge-glow.js        # Sobel edge detection + colorized glow
+│       ├── color-cycle.js      # Hue rotation + saturation/lightness shift
 │       │
 │       │  Geometry
 │       ├── pixel-sort.js       # Threshold-based pixel sorting
@@ -33,6 +36,8 @@ glitch-lab/
 │       ├── echo-shift.js       # Bitwise-blended offset copies
 │       ├── block-scramble.js   # Swap random tile-grid blocks (seeded)
 │       ├── mosaic-corrupt.js   # Per-tile random corruption (seeded)
+│       ├── symmetry-force.js   # Force mirror symmetry (H/V/quad)
+│       ├── kaleidoscope.js     # Wedge-mirror around center point
 │       │
 │       │  Data / Bit
 │       ├── bit-shift.js        # Shift, rotate, XOR on channel bits
@@ -58,7 +63,11 @@ glitch-lab/
 │       ├── quantization-blast.js # 8x8 DCT quantization
 │       │
 │       │  Meta
-│       └── feedback.js         # Recursive zoom/rotate overlay
+│       ├── feedback.js         # Recursive zoom/rotate overlay
+│       ├── pixel-echo.js       # Multi-copy ghost layers with blend modes
+│       ├── self-diff.js        # Diff image against transformed self
+│       ├── recursive-crop.js   # Droste-like recursive image-in-image
+│       └── convolution-corrupt.js # Broken convolution kernel (seeded)
 │
 └── .project/
     ├── README.md               # What the app does, how to run it
@@ -105,6 +114,7 @@ export default {
   name: 'Display Name',       // shown in UI
   badge: 'CATEGORY',          // badge label (COLOR, DATA, GEO, SORT, COMP, META, BYTE, BIT)
   badgeColor: '#hex',         // badge border/text color
+  description: 'Short tooltip description', // shown on hover in dropdown & stack
   params: [                   // parameter definitions for the UI
     { key: 'paramName', label: 'Label', min: 0, max: 100, step: 1, def: 50 },
     { key: 'mode', label: 'Mode', type: 'select', options: ['a', 'b'], def: 'a' },
