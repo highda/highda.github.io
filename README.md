@@ -14,4 +14,4 @@
 
 ### Guitar learning helpers (added/updated as I learn)
 
-[Chord transition trainer](/vibecode-snippets/guitar-transition-trainer.html)
+[Chord transition trainer](/vibecode-snippets/chord-transition-trainer.html)
