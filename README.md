@@ -11,3 +11,7 @@
 ### CSS Helpers
 
 [CSS mask-image gradient compositor](/vibecode-snippets/gradient-maskimage-compositor.html)
+
+### Guitar learning helpers (added/updated as I learn)
+
+[Chord transition trainer](/vibecode-snippets/guitar-transition-trainer.html)
