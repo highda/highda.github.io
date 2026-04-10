@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chord Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --panel: #141414;
+    --border: #2a2a2a;
+    --accent: #e8c84a;
+    --accent2: #e87a4a;
+    --text: #f0ede4;
+    --muted: #555;
+    --chord-display: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.8rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .header .sub {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .session-timer {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+  .session-timer.running {
+    color: var(--accent);
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+  }
+  .panel-label {
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .chord-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .chord-btn {
+    background: #1e1e1e;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    padding: 12px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    text-align: center;
+    user-select: none;
+  }
+  .chord-btn:hover { border-color: var(--accent); color: var(--text); }
+  .chord-btn.active {
+    background: rgba(232,200,74,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .chord-btn.active:hover { background: rgba(232,200,74,0.2); }
+
+  .controls-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .bpm-display { display: flex; align-items: center; gap: 10px; }
+  .bpm-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    color: var(--accent);
+    min-width: 64px;
+    letter-spacing: 1px;
+  }
+  .bpm-unit { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    margin-top: 8px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+  .beat-row { display: flex; gap: 10px; align-items: center; }
+  .beat-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; min-width: 80px; }
+  .beat-dots { display: flex; gap: 8px; }
+  .beat-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    transition: all 0.05s ease;
+  }
+  .beat-dot.beat1 { border-color: var(--accent); }
+  .beat-dot.lit {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent), 0 0 20px rgba(232,200,74,0.3);
+  }
+  .beat-dot.lit.accent {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    box-shadow: 0 0 10px var(--accent2), 0 0 24px rgba(232,122,74,0.4);
+  }
+
+  /* Speed-up panel */
+  .speedup-panel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .speedup-panel.enabled { border-color: rgba(232,200,74,0.4); }
+
+  .speedup-header {
+    background: var(--panel);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .speedup-header:hover { background: #1a1a1a; }
+
+  .toggle-wrap { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #2a2a2a;
+    border-radius: 10px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    top: 3px; left: 3px;
+    background: #555;
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-wrap input:checked + .toggle-track { background: rgba(232,200,74,0.25); border: 1px solid var(--accent); }
+  .toggle-wrap input:checked + .toggle-track::after { transform: translateX(16px); background: var(--accent); }
+
+  .speedup-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    transition: color 0.2s;
+    flex: 1;
+  }
+  .speedup-panel.enabled .speedup-title { color: var(--accent); }
+
+  .speedup-body {
+    background: #111;
+    padding: 0 20px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  .speedup-body.open { max-height: 320px; padding: 16px 20px 20px; }
+
+  .speedup-params {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .param-group { display: flex; flex-direction: column; gap: 6px; }
+  .param-label { font-size: 0.55rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .param-value-row { display: flex; align-items: center; gap: 6px; }
+  .param-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.7rem;
+    color: var(--text);
+    min-width: 40px;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+  .speedup-panel.enabled .param-num { color: var(--accent); }
+  .param-unit { font-size: 0.55rem; color: var(--muted); letter-spacing: 1px; }
+  .param-input {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+  .param-input:disabled { opacity: 0.3; cursor: not-allowed; }
+  .param-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .speedup-track { margin-top: 4px; opacity: 0; transition: opacity 0.3s; }
+  .speedup-track.visible { opacity: 1; }
+  .speedup-track-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.55rem;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .speedup-track-label .current-bpm {
+    color: var(--accent);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+  }
+  .speedup-bar-bg { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .speedup-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; width: 0%; }
+  .speedup-ticks { position: relative; height: 8px; margin-top: 3px; }
+  .speedup-tick { position: absolute; width: 1px; height: 6px; background: #333; top: 0; transform: translateX(-50%); }
+  .speedup-bars-counter { font-size: 0.55rem; color: var(--muted); letter-spacing: 1.5px; margin-top: 6px; text-align: right; }
+  .speedup-bars-counter span { color: var(--accent); }
+
+  /* Chord stage */
+  .chord-stage {
+    background: var(--chord-display);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+  }
+  .chord-stage::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: -60px; right: -60px;
+    height: 160px;
+    background: radial-gradient(ellipse at center, rgba(232,200,74,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .chord-stage.playing::before {
+    background: radial-gradient(ellipse at center, rgba(232,200,74,0.12) 0%, transparent 70%);
+  }
+
+  .chord-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 8rem;
+    letter-spacing: 6px;
+    color: var(--text);
+    line-height: 1;
+    opacity: 0.08;
+    transition: opacity 0.2s, color 0.2s, transform 0.15s;
+    transform: scale(0.92);
+    user-select: none;
+  }
+  .chord-name.show { opacity: 1; transform: scale(1); }
+  .chord-name.playing { color: var(--accent); text-shadow: 0 0 40px rgba(232,200,74,0.5); }
+
+  .chord-hint {
+    position: absolute;
+    bottom: 14px;
+    font-size: 0.55rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    transition: opacity 0.3s;
+  }
+  .phase-indicator {
+    position: absolute;
+    top: 14px; right: 16px;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .next-preview {
+    position: absolute;
+    bottom: 14px; left: 16px;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .next-preview.visible { opacity: 1; }
+  .next-preview strong {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    color: #444;
+    letter-spacing: 1px;
+  }
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 0%;
+    transition: width linear;
+    opacity: 0;
+  }
+  .progress-bar.active { opacity: 1; }
+
+  /* Start/Stop button */
+  .start-btn {
+    width: 100%;
+    padding: 18px;
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    letter-spacing: 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+  .start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
+    z-index: 0;
+  }
+  .start-btn span { position: relative; z-index: 1; }
+  .start-btn:hover::before { transform: scaleX(1); }
+  .start-btn:hover { color: var(--bg); }
+  .start-btn.running { border-color: var(--accent2); color: var(--accent2); }
+  .start-btn.running::before { background: var(--accent2); }
+  .start-btn.running:hover { color: var(--bg); }
+
+  .warning {
+    font-size: 0.6rem;
+    color: var(--accent2);
+    letter-spacing: 1px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    padding: 4px;
+  }
+  .warning.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>CHORD TRAINER</h1>
+    <span class="sub">Guitar Practice Tool</span>
+    <div class="session-timer" id="sessionTimer">0:00</div>
+  </div>
+
+  <!-- CHORD SELECTOR -->
+  <div class="panel">
+    <div class="panel-label">Select Chords to Train</div>
+    <div class="chord-grid" id="chordGrid"></div>
+  </div>
+
+  <!-- TEMPO + BEAT INDICATOR -->
+  <div class="controls-row">
+    <div class="panel">
+      <div class="panel-label">Tempo</div>
+      <div class="bpm-display">
+        <div class="bpm-number" id="bpmDisplay">80</div>
+        <div class="bpm-unit">BPM</div>
+      </div>
+      <input type="range" id="bpmSlider" min="40" max="200" value="80">
+    </div>
+    <div class="panel">
+      <div class="panel-label">Beat</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+        <div class="beat-row">
+          <span class="beat-label">Measure</span>
+          <div class="beat-dots" id="beatDots">
+            <div class="beat-dot beat1" id="dot0"></div>
+            <div class="beat-dot" id="dot1"></div>
+            <div class="beat-dot" id="dot2"></div>
+            <div class="beat-dot" id="dot3"></div>
+          </div>
+        </div>
+        <div style="font-size:0.55rem;color:var(--muted);letter-spacing:1.5px;line-height:1.6;">
+          BEATS 1–2: CHANGE CHORD<br>
+          BEATS 3–4: STRUM + HOLD
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRADUAL SPEED-UP -->
+  <div class="speedup-panel" id="speedupPanel">
+    <div class="speedup-header" id="speedupHeader">
+      <label class="toggle-wrap" onclick="event.stopPropagation()">
+        <input type="checkbox" id="speedupToggle">
+        <div class="toggle-track"></div>
+      </label>
+      <div class="speedup-title">GRADUAL SPEED-UP</div>
+      <span style="font-size:0.6rem;color:var(--muted);letter-spacing:1px;" id="speedupChevron">▼</span>
+    </div>
+    <div class="speedup-body" id="speedupBody">
+      <div class="speedup-params">
+        <div class="param-group">
+          <div class="param-label">Speed Up Every</div>
+          <div class="param-value-row">
+            <div class="param-num" id="suBarsVal">4</div>
+            <div class="param-unit">BARS</div>
+          </div>
+          <input type="range" class="param-input" id="suBarsSlider" min="1" max="16" value="4">
+        </div>
+        <div class="param-group">
+          <div class="param-label">Increase By</div>
+          <div class="param-value-row">
+            <div class="param-num" id="suStepVal">5</div>
+            <div class="param-unit">BPM</div>
+          </div>
+          <input type="range" class="param-input" id="suStepSlider" min="1" max="20" value="5">
+        </div>
+        <div class="param-group">
+          <div class="param-label">Stop At</div>
+          <div class="param-value-row">
+            <div class="param-num" id="suMaxVal">120</div>
+            <div class="param-unit">BPM</div>
+          </div>
+          <input type="range" class="param-input" id="suMaxSlider" min="60" max="200" value="120">
+        </div>
+      </div>
+      <div class="speedup-track" id="speedupTrack">
+        <div class="speedup-track-label">
+          <span>START <span style="font-family:'Bebas Neue';font-size:0.85rem;letter-spacing:1px;" id="suStartLabel">80</span></span>
+          <span class="current-bpm" id="suCurrentBpm">80 BPM</span>
+          <span>MAX <span style="font-family:'Bebas Neue';font-size:0.85rem;letter-spacing:1px;" id="suMaxLabel">120</span></span>
+        </div>
+        <div class="speedup-bar-bg">
+          <div class="speedup-bar-fill" id="suBarFill"></div>
+        </div>
+        <div class="speedup-ticks" id="suTicks"></div>
+        <div class="speedup-bars-counter" id="suBarsCounter">Bar <span id="suBarCurrent">1</span> of <span id="suBarUntilNext">4</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHORD STAGE -->
+  <div class="chord-stage" id="chordStage">
+    <div class="phase-indicator" id="phaseIndicator">WAITING</div>
+    <div class="chord-name" id="chordDisplay">—</div>
+    <div class="next-preview" id="nextPreview"></div>
+    <div class="chord-hint" id="chordHint">Press START to begin</div>
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <div class="warning" id="warning">Select at least 2 chords to start</div>
+
+  <button class="start-btn" id="startBtn">
+    <span id="startBtnText">▶ START</span>
+  </button>
+
+</div>
+<script>
+// ─── CHORD DEFINITIONS ───────────────────────────────────────────────────────
+const CHORD_DEFS = {
+  'Dm': { notes: [{ f:146.83,g:0.7 },{ f:220.00,g:0.8 },{ f:293.66,g:0.7 },{ f:349.23,g:0.6 },{ f:440.00,g:0.5 }], label:'Dm', color:'#e87a4a' },
+  'D':  { notes: [{ f:146.83,g:0.7 },{ f:293.66,g:0.7 },{ f:369.99,g:0.65},{ f:440.00,g:0.55},{ f:587.33,g:0.4 }], label:'D',  color:'#e8c84a' },
+  'Em': { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:196.00,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'Em', color:'#a0d4a0' },
+  'E':  { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:207.65,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'E',  color:'#e8c84a' },
+  'G':  { notes: [{ f:98.00, g:0.78},{ f:123.47,g:0.7 },{ f:146.83,g:0.68},{ f:196.00,g:0.66},{ f:246.94,g:0.58},{ f:392.00,g:0.45 }], label:'G',  color:'#9fcf7a' },
+  'Am': { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:261.63,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'Am', color:'#a0c4e8' },
+  'A':  { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:277.18,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'A',  color:'#e8c84a' },
+};
+const ALL_CHORD_KEYS = ['Dm', 'D', 'Em', 'E', 'G', 'Am', 'A'];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let selectedChords = new Set(['Dm', 'D', 'Em', 'G', 'Am']);
+let isRunning = false;
+let currentChord = null;
+let nextChord = null;   // pre-rolled at beat 3, consumed at beat 0
+let bpm = 80;
+let schedulerTimer = null;
+let audioCtx = null;
+let beatCount = 0;
+
+// Speed-up state
+let suEnabled = false;
+let suBars = 4;
+let suStep = 5;
+let suMax = 120;
+let suStartBpm = 80;
+let suBarCount = 0;
+let suReachedMax = false;
+
+// Session timer state
+let sessionStartTime = 0;      // timestamp when session started
+let sessionElapsedMs = 0;      // total elapsed time (persists across stop/start)
+let timerInterval = null;      // interval for updating the display
+
+// ─── AUDIO ────────────────────────────────────────────────────────────────────
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playChord(chordKey, strumDuration, volume = 0.55) {
+  const ctx = getAudioCtx();
+  const chord = CHORD_DEFS[chordKey];
+  if (!chord) return;
+  const now = ctx.currentTime;
+  const strumDelay = 0.018;
+  const attackTime  = 0.008;
+  const decayTime   = 0.12;
+  const sustainLevel = 0.30;
+  const holdTime    = Math.max(0.05, strumDuration - attackTime - decayTime - 0.10);
+  const releaseTime = Math.min(0.18 + strumDuration * 0.25, 0.55);
+
+  chord.notes.forEach((note, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filt = ctx.createBiquadFilter();
+    osc.type = 'sawtooth';
+    osc.frequency.value = note.f;
+    filt.type = 'lowpass';
+    filt.frequency.value = 2400 + note.f * 0.5;
+    filt.Q.value = 0.8;
+    const t0   = now + i * strumDelay;
+    const peak = note.g * volume * 0.55;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(peak, t0 + attackTime);
+    gain.gain.linearRampToValueAtTime(sustainLevel * peak, t0 + attackTime + decayTime);
+    gain.gain.setValueAtTime(sustainLevel * peak, t0 + attackTime + decayTime + holdTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + attackTime + decayTime + holdTime + releaseTime);
+    osc.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + attackTime + decayTime + holdTime + releaseTime + 0.05);
+  });
+
+  chord.notes.slice(0, 3).forEach((note, i) => {
+    const osc2  = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'triangle';
+    osc2.frequency.value = note.f * 2;
+    const t0   = now + i * strumDelay;
+    const peak = note.g * volume * 0.08;
+    gain2.gain.setValueAtTime(0, t0);
+    gain2.gain.linearRampToValueAtTime(peak, t0 + 0.005);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, t0 + Math.min(strumDuration * 0.6, 0.8));
+    osc2.connect(gain2); gain2.connect(ctx.destination);
+    osc2.start(t0);
+    osc2.stop(t0 + Math.min(strumDuration * 0.6, 0.8) + 0.05);
+  });
+}
+
+function playClick(accent = false) {
+  const ctx = getAudioCtx();
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.006));
+  }
+  const src  = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filt = ctx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.value = accent ? 1200 : 800;
+  filt.Q.value = accent ? 2 : 3;
+  gain.gain.value = accent ? 0.5 : 0.3;
+  src.buffer = buf;
+  src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+  src.start();
+}
+
+// ─── CHORD POOL ───────────────────────────────────────────────────────────────
+function getRandomChord(exclude = null) {
+  const pool = [...selectedChords].filter(c => c !== exclude);
+  if (pool.length === 0) return [...selectedChords][0];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ─── UI ELEMENT REFS ─────────────────────────────────────────────────────────
+const chordDisplayEl = document.getElementById('chordDisplay');
+const chordStageEl   = document.getElementById('chordStage');
+const chordHintEl    = document.getElementById('chordHint');
+const phaseEl        = document.getElementById('phaseIndicator');
+const nextPreviewEl  = document.getElementById('nextPreview');
+const progressBarEl  = document.getElementById('progressBar');
+const bpmDisplayEl   = document.getElementById('bpmDisplay');
+const bpmSliderEl    = document.getElementById('bpmSlider');
+const startBtnEl     = document.getElementById('startBtn');
+const startBtnTextEl = document.getElementById('startBtnText');
+const warningEl      = document.getElementById('warning');
+
+const speedupPanelEl = document.getElementById('speedupPanel');
+const speedupToggle  = document.getElementById('speedupToggle');
+const speedupBody    = document.getElementById('speedupBody');
+const speedupChevron = document.getElementById('speedupChevron');
+const suBarsSlider   = document.getElementById('suBarsSlider');
+const suStepSlider   = document.getElementById('suStepSlider');
+const suMaxSlider    = document.getElementById('suMaxSlider');
+const suBarsVal      = document.getElementById('suBarsVal');
+const suStepVal      = document.getElementById('suStepVal');
+const suMaxVal       = document.getElementById('suMaxVal');
+const speedupTrack   = document.getElementById('speedupTrack');
+const suBarFill      = document.getElementById('suBarFill');
+const suTicks        = document.getElementById('suTicks');
+const suCurrentBpm   = document.getElementById('suCurrentBpm');
+const suStartLabel   = document.getElementById('suStartLabel');
+const suMaxLabel     = document.getElementById('suMaxLabel');
+const suBarCurrent   = document.getElementById('suBarCurrent');
+const suBarUntilNext = document.getElementById('suBarUntilNext');
+
+const sessionTimerEl = document.getElementById('sessionTimer');
+
+// ─── SESSION TIMER ────────────────────────────────────────────────────────────
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function updateTimerDisplay() {
+  const now = Date.now();
+  const currentMs = sessionElapsedMs + (now - sessionStartTime);
+  sessionTimerEl.textContent = formatTime(currentMs);
+}
+
+function startTimer() {
+  sessionStartTime = Date.now();
+  sessionTimerEl.classList.add('running');
+  timerInterval = setInterval(updateTimerDisplay, 100); // update 10x/sec for smooth display
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  // Accumulate elapsed time so far
+  sessionElapsedMs += (Date.now() - sessionStartTime);
+  sessionTimerEl.classList.remove('running');
+  updateTimerDisplay(); // final update
+}
+
+function resetTimer() {
+  sessionElapsedMs = 0;
+  sessionStartTime = Date.now();
+  sessionTimerEl.textContent = '0:00';
+}
+
+// ─── CHORD GRID ───────────────────────────────────────────────────────────────
+const chordGrid = document.getElementById('chordGrid');
+ALL_CHORD_KEYS.forEach(key => {
+  const btn = document.createElement('button');
+  btn.className = 'chord-btn' + (selectedChords.has(key) ? ' active' : '');
+  btn.textContent = CHORD_DEFS[key].label;
+  btn.addEventListener('click', () => {
+    if (isRunning) return;
+    if (selectedChords.has(key)) {
+      if (selectedChords.size <= 1) return;
+      selectedChords.delete(key);
+      btn.classList.remove('active');
+    } else {
+      selectedChords.add(key);
+      btn.classList.add('active');
+    }
+    warningEl.classList.toggle('visible', selectedChords.size < 2);
+  });
+  chordGrid.appendChild(btn);
+});
+
+// ─── SLIDER CONSTRAINT COUPLING ──────────────────────────────────────────────
+// Invariant: suMax >= bpm + suStep  (at least one step above start tempo)
+
+function enforceConstraints(changed) {
+  let newBpm  = parseInt(bpmSliderEl.value);
+  let newStep = parseInt(suStepSlider.value);
+  let newMax  = parseInt(suMaxSlider.value);
+  const minMax = newBpm + newStep;
+
+  if (changed === 'bpm' || changed === 'step') {
+    if (newMax < minMax) {
+      newMax = Math.min(minMax, parseInt(suMaxSlider.max));
+      suMaxSlider.value = newMax;
+    }
+  } else if (changed === 'max') {
+    if (newMax < minMax) {
+      newBpm = Math.max(newMax - newStep, parseInt(bpmSliderEl.min));
+      bpmSliderEl.value = newBpm;
+      if (newBpm + newStep > newMax) {
+        newStep = Math.max(newMax - newBpm, 1);
+        suStepSlider.value = newStep;
+      }
+    }
+  }
+
+  bpm    = newBpm;
+  suStep = newStep;
+  suMax  = newMax;
+
+  bpmDisplayEl.textContent = bpm;
+  suStepVal.textContent    = suStep;
+  suMaxVal.textContent     = suMax;
+  suMaxSlider.min          = bpm + suStep;
+
+  if (isRunning && changed === 'bpm') { stop(); start(); }
+}
+
+bpmSliderEl.addEventListener('input',  () => enforceConstraints('bpm'));
+suStepSlider.addEventListener('input', () => enforceConstraints('step'));
+suMaxSlider.addEventListener('input',  () => enforceConstraints('max'));
+
+suBarsSlider.addEventListener('input', () => {
+  suBars = parseInt(suBarsSlider.value);
+  suBarsVal.textContent = suBars;
+});
+
+// ─── SPEED-UP PANEL UI ───────────────────────────────────────────────────────
+document.getElementById('speedupHeader').addEventListener('click', () => {
+  const open = speedupBody.classList.toggle('open');
+  speedupChevron.textContent = open ? '▲' : '▼';
+});
+
+speedupToggle.addEventListener('change', () => {
+  suEnabled = speedupToggle.checked;
+  speedupPanelEl.classList.toggle('enabled', suEnabled);
+  [suBarsSlider, suStepSlider, suMaxSlider].forEach(s => s.disabled = !suEnabled);
+});
+
+// Disable speed-up sliders on load (toggle is off)
+[suBarsSlider, suStepSlider, suMaxSlider].forEach(s => s.disabled = true);
+suMaxSlider.min = bpm + suStep; // enforce initial constraint
+
+// ─── BEAT DOTS ───────────────────────────────────────────────────────────────
+function updateBeatDots(beat) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById(`dot${i}`);
+    dot.classList.remove('lit', 'accent');
+    if (i === beat) {
+      dot.classList.add('lit');
+      if (i === 0) dot.classList.add('accent');
+    }
+  }
+}
+
+// ─── PROGRESS BAR ────────────────────────────────────────────────────────────
+function animateProgress(durationMs) {
+  progressBarEl.style.transition = 'none';
+  progressBarEl.style.width = '0%';
+  progressBarEl.classList.add('active');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    progressBarEl.style.transition = `width ${durationMs}ms linear`;
+    progressBarEl.style.width = '100%';
+  }));
+}
+
+// ─── SPEED-UP PROGRESS ───────────────────────────────────────────────────────
+function buildSpeedupTicks() {
+  suTicks.innerHTML = '';
+  const totalRange = suMax - suStartBpm;
+  if (totalRange <= 0) return;
+  const steps = Math.floor(totalRange / suStep);
+  for (let i = 1; i <= steps; i++) {
+    const pct = (i * suStep) / totalRange * 100;
+    const tick = document.createElement('div');
+    tick.className = 'speedup-tick';
+    tick.style.left = pct + '%';
+    suTicks.appendChild(tick);
+  }
+}
+
+function updateSpeedupProgress() {
+  if (!suEnabled || !isRunning) return;
+  const totalRange = suMax - suStartBpm;
+  const pct = totalRange > 0 ? Math.min(100, (bpm - suStartBpm) / totalRange * 100) : 0;
+  suBarFill.style.width = pct + '%';
+  suCurrentBpm.textContent = bpm + ' BPM';
+  suBarCurrent.textContent = suBarCount + 1;
+  suBarUntilNext.textContent = suBars;
+}
+
+// ─── SPEED-UP LOGIC ───────────────────────────────────────────────────────────
+function handleSpeedupOnBar() {
+  if (!suEnabled || suReachedMax) return;
+  suBarCount++;
+  if (suBarCount >= suBars) {
+    suBarCount = 0;
+    const newBpm = Math.min(bpm + suStep, suMax);
+    if (newBpm !== bpm) {
+      bpm = newBpm;
+      clearInterval(schedulerTimer);
+      bpmDisplayEl.textContent = bpm;
+      bpmSliderEl.value = bpm;
+      scheduleLoop();
+    }
+    if (bpm >= suMax) {
+      suReachedMax = true;
+    }
+  }
+  updateSpeedupProgress();
+}
+
+// ─── MAIN BEAT LOOP ───────────────────────────────────────────────────────────
+function onBeat(beat) {
+  updateBeatDots(beat);
+  const beatDuration    = (60 / bpm) * 1000;
+  const beatDurationSec = 60 / bpm;
+  const strumDurationSec = beatDurationSec * 1.85;
+
+  if (beat === 0) {
+    handleSpeedupOnBar();
+
+    // Consume the chord pre-rolled at beat 3; roll fresh only on the first bar
+    currentChord = nextChord !== null ? nextChord : getRandomChord(currentChord);
+    nextChord = null;
+
+    chordDisplayEl.textContent = currentChord;
+    chordDisplayEl.classList.add('show');
+    chordDisplayEl.classList.remove('playing');
+    chordDisplayEl.style.color = '';
+
+    phaseEl.textContent = suReachedMax ? 'MAX BPM!' : 'PREPARE';
+    chordHintEl.textContent = 'Get your fingers ready…';
+    chordStageEl.classList.remove('playing');
+    nextPreviewEl.classList.remove('visible');
+    progressBarEl.style.width = '0%';
+    progressBarEl.classList.remove('active');
+    playClick(true);
+
+  } else if (beat === 1) {
+    playClick(false);
+    animateProgress(beatDuration * 2);
+
+  } else if (beat === 2) {
+    playChord(currentChord, strumDurationSec);
+    playClick(true);
+
+    chordDisplayEl.classList.add('playing');
+    chordDisplayEl.style.color = CHORD_DEFS[currentChord].color;
+    chordStageEl.classList.add('playing');
+    phaseEl.textContent = 'STRUM';
+    chordHintEl.textContent = 'Hold the chord!';
+
+    progressBarEl.style.transition = 'none';
+    progressBarEl.style.width = '0%';
+    progressBarEl.classList.add('active');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      progressBarEl.style.transition = `width ${beatDuration * 2}ms linear`;
+      progressBarEl.style.width = '100%';
+    }));
+
+  } else if (beat === 3) {
+    playClick(false);
+    // Pre-roll next chord (different from current) and show preview
+    nextChord = getRandomChord(currentChord);
+    nextPreviewEl.innerHTML = `NEXT → <strong>${nextChord}</strong>`;
+    nextPreviewEl.classList.add('visible');
+  }
+}
+
+function scheduleLoop() {
+  const intervalMs = (60 / bpm) * 1000;
+  schedulerTimer = setInterval(() => {
+    const beat = beatCount % 4;
+    beatCount++;
+    onBeat(beat);
+  }, intervalMs);
+}
+
+// ─── START / STOP ─────────────────────────────────────────────────────────────
+function start() {
+  if (selectedChords.size < 2) { warningEl.classList.add('visible'); return; }
+  getAudioCtx().resume();
+  isRunning    = true;
+  beatCount    = 0;
+  currentChord = null;
+  nextChord    = null;
+
+  // Reset and start session timer
+  resetTimer();
+  startTimer();
+
+  suStartBpm   = bpm;
+  suBarCount   = 0;
+  suReachedMax = false;
+  suStartLabel.textContent = bpm;
+  suMaxLabel.textContent   = suMax;
+  buildSpeedupTicks();
+  updateSpeedupProgress();
+  if (suEnabled) speedupTrack.classList.add('visible');
+
+  startBtnTextEl.textContent = '■ STOP';
+  startBtnEl.classList.add('running');
+  chordDisplayEl.classList.remove('show', 'playing');
+  phaseEl.textContent = 'RUNNING';
+  chordHintEl.textContent = '…';
+  warningEl.classList.remove('visible');
+
+  document.querySelectorAll('.chord-btn').forEach(b => b.style.opacity = '0.5');
+  bpmSliderEl.disabled = true;
+  [suBarsSlider, suStepSlider, suMaxSlider, speedupToggle].forEach(s => s.disabled = true);
+
+  scheduleLoop();
+}
+
+function stop() {
+  isRunning = false;
+  clearInterval(schedulerTimer);
+  schedulerTimer = null;
+
+  // Stop timer (but don't reset - that happens on next start)
+  stopTimer();
+
+  startBtnTextEl.textContent = '▶ START';
+  startBtnEl.classList.remove('running');
+
+  chordDisplayEl.classList.remove('show', 'playing');
+  chordDisplayEl.textContent = '—';
+  chordDisplayEl.style.color = '';
+  phaseEl.textContent = 'WAITING';
+  chordHintEl.textContent = 'Press START to begin';
+  nextPreviewEl.classList.remove('visible');
+  chordStageEl.classList.remove('playing');
+  progressBarEl.style.width = '0%';
+  progressBarEl.classList.remove('active');
+  updateBeatDots(-1);
+  speedupTrack.classList.remove('visible');
+  suBarFill.style.width = '0%';
+
+  document.querySelectorAll('.chord-btn').forEach(b => b.style.opacity = '');
+  bpmSliderEl.disabled = false;
+  speedupToggle.disabled = false;
+  if (suEnabled) [suBarsSlider, suStepSlider, suMaxSlider].forEach(s => s.disabled = false);
+}
+
+startBtnEl.addEventListener('click', () => { if (isRunning) stop(); else start(); });
+
+// Init
+warningEl.classList.toggle('visible', selectedChords.size < 2);
+</script>
+</body>
+</html>
