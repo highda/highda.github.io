@@ -562,14 +562,13 @@ const CHORD_DEFS = {
   'D':  { notes: [{ f:146.83,g:0.7 },{ f:293.66,g:0.7 },{ f:369.99,g:0.65},{ f:440.00,g:0.55},{ f:587.33,g:0.4 }], label:'D',  color:'#e8c84a' },
   'Em': { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:196.00,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'Em', color:'#a0d4a0' },
   'E':  { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:207.65,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'E',  color:'#e8c84a' },
-  'G':  { notes: [{ f:98.00, g:0.78},{ f:123.47,g:0.7 },{ f:146.83,g:0.68},{ f:196.00,g:0.66},{ f:246.94,g:0.58},{ f:392.00,g:0.45 }], label:'G',  color:'#9fcf7a' },
   'Am': { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:261.63,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'Am', color:'#a0c4e8' },
   'A':  { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:277.18,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'A',  color:'#e8c84a' },
 };
-const ALL_CHORD_KEYS = ['Dm', 'D', 'Em', 'E', 'G', 'Am', 'A'];
+const ALL_CHORD_KEYS = ['Dm', 'D', 'Em', 'E', 'Am', 'A'];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let selectedChords = new Set(['Dm', 'D', 'Em', 'G', 'Am']);
+let selectedChords = new Set(['Dm', 'D', 'Em', 'Am']);
 let isRunning = false;
 let currentChord = null;
 let nextChord = null;   // pre-rolled at beat 3, consumed at beat 0
