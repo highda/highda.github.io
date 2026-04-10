@@ -310,6 +310,47 @@
   .speedup-bars-counter { font-size: 0.55rem; color: var(--muted); letter-spacing: 1.5px; margin-top: 6px; text-align: right; }
   .speedup-bars-counter span { color: var(--accent); }
 
+
+  /* Chord Focus */
+  .focus-panel {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  .focus-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .focus-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    color: var(--text);
+  }
+  .focus-sub {
+    font-size: 0.55rem;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .focus-select {
+    background: #1e1e1e;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    padding: 10px 12px;
+    border-radius: 3px;
+    min-width: 120px;
+  }
+  .focus-select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
   /* Chord stage */
   .chord-stage {
     background: var(--chord-display);
@@ -539,6 +580,26 @@
     </div>
   </div>
 
+
+  <!-- CHORD FOCUS -->
+  <div class="panel">
+    <div class="panel-label">Mode</div>
+    <div class="focus-panel">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="focusModeToggle">
+        <div class="toggle-track"></div>
+      </label>
+      <div class="focus-controls">
+        <div>
+          <div class="focus-title">CHORD FOCUS</div>
+          <div class="focus-sub">Alternate focused chord with random non-focused chord</div>
+        </div>
+        <select id="focusChordSelect" class="focus-select" aria-label="Focused chord">
+        </select>
+      </div>
+    </div>
+  </div>
+
   <!-- CHORD STAGE -->
   <div class="chord-stage" id="chordStage">
     <div class="phase-indicator" id="phaseIndicator">WAITING</div>
@@ -562,13 +623,14 @@ const CHORD_DEFS = {
   'D':  { notes: [{ f:146.83,g:0.7 },{ f:293.66,g:0.7 },{ f:369.99,g:0.65},{ f:440.00,g:0.55},{ f:587.33,g:0.4 }], label:'D',  color:'#e8c84a' },
   'Em': { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:196.00,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'Em', color:'#a0d4a0' },
   'E':  { notes: [{ f:82.41, g:0.75},{ f:123.47,g:0.7 },{ f:164.81,g:0.7 },{ f:207.65,g:0.65},{ f:246.94,g:0.6 },{ f:329.63,g:0.5 }], label:'E',  color:'#e8c84a' },
+  'G':  { notes: [{ f:98.00, g:0.78},{ f:123.47,g:0.7 },{ f:146.83,g:0.68},{ f:196.00,g:0.66},{ f:246.94,g:0.58},{ f:392.00,g:0.45 }], label:'G',  color:'#9fcf7a' },
   'Am': { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:261.63,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'Am', color:'#a0c4e8' },
   'A':  { notes: [{ f:110.00,g:0.75},{ f:164.81,g:0.7 },{ f:220.00,g:0.7 },{ f:277.18,g:0.65},{ f:329.63,g:0.55},{ f:440.00,g:0.4 }], label:'A',  color:'#e8c84a' },
 };
-const ALL_CHORD_KEYS = ['Dm', 'D', 'Em', 'E', 'Am', 'A'];
+const ALL_CHORD_KEYS = ['Dm', 'D', 'Em', 'E', 'G', 'Am', 'A'];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let selectedChords = new Set(['Dm', 'D', 'Em', 'Am']);
+let selectedChords = new Set(['Dm', 'D', 'Em', 'G', 'Am']);
 let isRunning = false;
 let currentChord = null;
 let nextChord = null;   // pre-rolled at beat 3, consumed at beat 0
@@ -576,6 +638,11 @@ let bpm = 80;
 let schedulerTimer = null;
 let audioCtx = null;
 let beatCount = 0;
+
+// Chord Focus state
+let focusModeEnabled = false;
+let focusedChord = 'G';
+let focusNeedsFocused = true;
 
 // Speed-up state
 let suEnabled = false;
@@ -666,10 +733,53 @@ function playClick(accent = false) {
 }
 
 // ─── CHORD POOL ───────────────────────────────────────────────────────────────
-function getRandomChord(exclude = null) {
-  const pool = [...selectedChords].filter(c => c !== exclude);
-  if (pool.length === 0) return [...selectedChords][0];
+function getRandomChord(exclude = null, poolOverride = null) {
+  const sourcePool = poolOverride ? [...poolOverride] : [...selectedChords];
+  const pool = sourcePool.filter(c => c !== exclude);
+  if (pool.length === 0) return sourcePool[0] ?? null;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function getNextChord(previousChord = null) {
+  if (!focusModeEnabled) return getRandomChord(previousChord);
+
+  const available = [...selectedChords];
+  if (!available.includes(focusedChord)) return getRandomChord(previousChord);
+
+  const remainder = available.filter(c => c !== focusedChord);
+  if (remainder.length === 0) return focusedChord;
+
+  if (focusNeedsFocused) {
+    focusNeedsFocused = false;
+    return focusedChord;
+  }
+
+  focusNeedsFocused = true;
+  return getRandomChord(previousChord, remainder);
+}
+
+function syncFocusOptions() {
+  const prevValue = focusChordSelectEl.value || focusedChord;
+  focusChordSelectEl.innerHTML = '';
+
+  ALL_CHORD_KEYS.forEach(key => {
+    if (!selectedChords.has(key)) return;
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = CHORD_DEFS[key].label;
+    focusChordSelectEl.appendChild(option);
+  });
+
+  if (selectedChords.has(prevValue)) {
+    focusedChord = prevValue;
+  } else if (selectedChords.has(focusedChord)) {
+    // keep current focused chord
+  } else {
+    focusedChord = [...selectedChords][0] || 'G';
+  }
+
+  focusChordSelectEl.value = focusedChord;
+  focusChordSelectEl.disabled = !focusModeEnabled || isRunning || selectedChords.size === 0;
 }
 
 // ─── UI ELEMENT REFS ─────────────────────────────────────────────────────────
@@ -684,6 +794,8 @@ const bpmSliderEl    = document.getElementById('bpmSlider');
 const startBtnEl     = document.getElementById('startBtn');
 const startBtnTextEl = document.getElementById('startBtnText');
 const warningEl      = document.getElementById('warning');
+const focusModeToggleEl = document.getElementById('focusModeToggle');
+const focusChordSelectEl = document.getElementById('focusChordSelect');
 
 const speedupPanelEl = document.getElementById('speedupPanel');
 const speedupToggle  = document.getElementById('speedupToggle');
@@ -759,6 +871,7 @@ ALL_CHORD_KEYS.forEach(key => {
       selectedChords.add(key);
       btn.classList.add('active');
     }
+    syncFocusOptions();
     warningEl.classList.toggle('visible', selectedChords.size < 2);
   });
   chordGrid.appendChild(btn);
@@ -820,6 +933,16 @@ speedupToggle.addEventListener('change', () => {
   suEnabled = speedupToggle.checked;
   speedupPanelEl.classList.toggle('enabled', suEnabled);
   [suBarsSlider, suStepSlider, suMaxSlider].forEach(s => s.disabled = !suEnabled);
+});
+
+
+focusModeToggleEl.addEventListener('change', () => {
+  focusModeEnabled = focusModeToggleEl.checked;
+  syncFocusOptions();
+});
+
+focusChordSelectEl.addEventListener('change', () => {
+  focusedChord = focusChordSelectEl.value;
 });
 
 // Disable speed-up sliders on load (toggle is off)
@@ -906,7 +1029,7 @@ function onBeat(beat) {
     handleSpeedupOnBar();
 
     // Consume the chord pre-rolled at beat 3; roll fresh only on the first bar
-    currentChord = nextChord !== null ? nextChord : getRandomChord(currentChord);
+    currentChord = nextChord !== null ? nextChord : getNextChord(currentChord);
     nextChord = null;
 
     chordDisplayEl.textContent = currentChord;
@@ -947,7 +1070,7 @@ function onBeat(beat) {
   } else if (beat === 3) {
     playClick(false);
     // Pre-roll next chord (different from current) and show preview
-    nextChord = getRandomChord(currentChord);
+    nextChord = getNextChord(currentChord);
     nextPreviewEl.innerHTML = `NEXT → <strong>${nextChord}</strong>`;
     nextPreviewEl.classList.add('visible');
   }
@@ -970,6 +1093,7 @@ function start() {
   beatCount    = 0;
   currentChord = null;
   nextChord    = null;
+  focusNeedsFocused = true;
 
   // Reset and start session timer
   resetTimer();
@@ -993,7 +1117,7 @@ function start() {
 
   document.querySelectorAll('.chord-btn').forEach(b => b.style.opacity = '0.5');
   bpmSliderEl.disabled = true;
-  [suBarsSlider, suStepSlider, suMaxSlider, speedupToggle].forEach(s => s.disabled = true);
+  [suBarsSlider, suStepSlider, suMaxSlider, speedupToggle, focusModeToggleEl, focusChordSelectEl].forEach(s => s.disabled = true);
 
   scheduleLoop();
 }
@@ -1025,12 +1149,15 @@ function stop() {
   document.querySelectorAll('.chord-btn').forEach(b => b.style.opacity = '');
   bpmSliderEl.disabled = false;
   speedupToggle.disabled = false;
+  focusModeToggleEl.disabled = false;
   if (suEnabled) [suBarsSlider, suStepSlider, suMaxSlider].forEach(s => s.disabled = false);
+  syncFocusOptions();
 }
 
 startBtnEl.addEventListener('click', () => { if (isRunning) stop(); else start(); });
 
 // Init
+syncFocusOptions();
 warningEl.classList.toggle('visible', selectedChords.size < 2);
 </script>
 </body>
