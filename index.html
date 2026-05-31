@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>highda archives — free useless stuff</title>
+<meta name="description" content="Free useless stuff! Just as nature intended. Image glitch tools, CSS helpers, and guitar learning toys.">
+<meta name="color-scheme" content="dark">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="highda archives">
+<meta property="og:description" content="Free useless stuff! Just as nature intended.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=VT323&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#08080f;
+    --bg-2:#0e0e1c;
+    --ink:#d7d7e6;
+    --muted:#7a7a96;
+    --cyan:#55ffff;
+    --magenta:#ff55ff;
+    --line:rgba(85,255,255,.16);
+    --card:rgba(255,255,255,.025);
+    --radius:14px;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--mono);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  /* ---- ambient background ---- */
+  .bg-fx{position:fixed;inset:0;z-index:-3;pointer-events:none;
+    background:linear-gradient(180deg,var(--bg) 0%, var(--bg-2) 100%)}
+  /* deep-space base tint */
+  .bg-fx::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(40% 35% at 80% 90%, rgba(120,60,200,.10), transparent 70%),
+      radial-gradient(50% 45% at 10% 95%, rgba(0,120,180,.08), transparent 70%);
+  }
+  /* drifting nebula clouds */
+  .bg-fx::after{
+    content:"";position:absolute;inset:-20%;opacity:.9;
+    background:
+      radial-gradient(38% 30% at 18% 12%, rgba(255,85,255,.22), transparent 62%),
+      radial-gradient(42% 34% at 92% 18%, rgba(85,255,255,.20), transparent 62%),
+      radial-gradient(30% 26% at 60% 60%, rgba(150,90,255,.14), transparent 60%);
+    filter:blur(8px);
+    animation:nebula 38s ease-in-out infinite alternate;
+  }
+  @keyframes nebula{
+    0%  {transform:translate3d(0,0,0) scale(1)}
+    50% {transform:translate3d(-3%,2%,0) scale(1.08)}
+    100%{transform:translate3d(2%,-2%,0) scale(1.04)}
+  }
+  /* canvas starfield */
+  #space{position:fixed;inset:0;z-index:-2;pointer-events:none;display:block}
+  /* CRT scanlines */
+  .scanlines{position:fixed;inset:0;z-index:50;pointer-events:none;
+    background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.22) 2px 3px);
+    mix-blend-mode:multiply;opacity:.5}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:0 22px}
+
+  /* ---- header ---- */
+  header{padding:clamp(56px,12vw,120px) 0 28px}
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--cyan);border:1px solid var(--line);
+    padding:6px 12px;border-radius:999px;background:rgba(85,255,255,.05);
+  }
+  .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 10px var(--cyan);animation:blink 2.4s steps(1) infinite}
+  @keyframes blink{50%{opacity:.25}}
+
+  h1{
+    font-family:'VT323',var(--mono);
+    font-weight:400;
+    font-size:clamp(54px,13vw,128px);
+    line-height:.92;
+    margin:20px 0 6px;
+    letter-spacing:1px;
+    color:#fff;
+    position:relative;
+    width:max-content;max-width:100%;
+  }
+  /* chromatic glitch */
+  h1[data-text]::before,h1[data-text]::after{
+    content:attr(data-text);position:absolute;inset:0;
+    clip-path:inset(0);
+  }
+  h1[data-text]::before{color:var(--magenta);transform:translate(-2px,0);mix-blend-mode:screen;
+    animation:gl1 5.5s infinite steps(1)}
+  h1[data-text]::after{color:var(--cyan);transform:translate(2px,0);mix-blend-mode:screen;
+    animation:gl2 5.5s infinite steps(1)}
+  @keyframes gl1{0%,93%{clip-path:inset(100% 0 0 0)}94%{clip-path:inset(10% 0 78% 0)}96%{clip-path:inset(55% 0 28% 0)}98%{clip-path:inset(30% 0 50% 0)}}
+  @keyframes gl2{0%,93%{clip-path:inset(100% 0 0 0)}95%{clip-path:inset(70% 0 12% 0)}97%{clip-path:inset(20% 0 65% 0)}99%{clip-path:inset(45% 0 35% 0)}}
+
+  .tagline{font-size:clamp(16px,2.4vw,21px);color:var(--ink);margin:14px 0 0;max-width:50ch}
+  .tagline em{color:var(--magenta);font-style:normal}
+  .sub{color:var(--muted);font-size:14px;margin-top:10px}
+
+  /* ---- sections ---- */
+  main{padding-bottom:80px}
+  section{margin-top:clamp(40px,7vw,72px)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px}
+  .sec-head h2{
+    font-size:14px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--cyan);margin:0;white-space:nowrap;font-weight:700;
+  }
+  .sec-head h2 .num{color:var(--magenta);margin-right:8px}
+  .sec-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+
+  /* ---- card grid ---- */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(248px,1fr))}
+  .card{
+    position:relative;display:flex;flex-direction:column;
+    padding:22px 22px 20px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    text-decoration:none;color:inherit;
+    overflow:hidden;
+    transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease;
+  }
+  .card::after{ /* corner accent */
+    content:"";position:absolute;top:0;right:0;width:46px;height:46px;
+    background:linear-gradient(225deg,rgba(85,255,255,.22),transparent 60%);
+    opacity:0;transition:opacity .2s ease;
+  }
+  .card:hover,.card:focus-visible{
+    transform:translateY(-4px);
+    border-color:var(--cyan);
+    background:rgba(85,255,255,.05);
+    box-shadow:0 10px 40px -12px rgba(85,255,255,.4),
+               inset 0 0 0 1px rgba(85,255,255,.12);
+    outline:none;
+  }
+  .card:hover::after,.card:focus-visible::after{opacity:1}
+  .card:hover .c-title{color:var(--cyan)}
+
+  .c-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .c-icon{font-size:24px;line-height:1;filter:saturate(1.2)}
+  .c-tag{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+  .c-title{font-size:18px;font-weight:700;margin:0 0 6px;color:#fff;transition:color .18s ease}
+  .c-desc{font-size:13.5px;color:var(--muted);margin:0;flex:1}
+  .c-go{margin-top:16px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--cyan);display:inline-flex;align-items:center;gap:8px}
+  .c-go .arrow{transition:transform .18s ease}
+  .card:hover .c-go .arrow{transform:translateX(5px)}
+
+  /* ---- footer ---- */
+  footer{border-top:1px solid var(--line);padding:30px 0 60px;margin-top:30px}
+  .foot{display:flex;flex-wrap:wrap;gap:14px 26px;align-items:center;justify-content:space-between}
+  .foot a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .foot a:hover{color:var(--cyan);border-color:var(--cyan)}
+  .foot .meta{color:var(--muted);font-size:12.5px}
+
+  @media (max-width:520px){
+    .grid{grid-template-columns:1fr}
+    .sec-head{flex-wrap:wrap}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;scroll-behavior:auto}
+    .card{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="bg-fx" aria-hidden="true"></div>
+<canvas id="space" aria-hidden="true"></canvas>
+<div class="scanlines" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header>
+    <span class="badge"><span class="dot"></span>highda archives — online</span>
+    <h1 data-text="highda">highda</h1>
+    <p class="tagline">Free useless stuff! <em>Just as nature intended.</em></p>
+    <p class="sub">A pile of vibecoded browser toys. Everything runs locally in your tab — no uploads, no accounts, no point.</p>
+  </header>
+
+  <main>
+    <!-- IMAGE TOOLS -->
+    <section>
+      <div class="sec-head">
+        <h2><span class="num">01</span>Image Tools</h2>
+        <div class="rule"></div>
+      </div>
+      <div class="grid">
+        <a class="card" href="/vibecode-snippets/convertto-cga.html">
+          <div class="c-top"><span class="c-icon">🎨</span><span class="c-tag">WASM · Magick</span></div>
+          <h3 class="c-title">Convert to CGA — v1</h3>
+          <p class="c-desc">Crunch any image down to the glorious 4-color CGA palette via WebAssembly ImageMagick. Slower, but thorough.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+
+        <a class="card" href="/vibecode-snippets/convertto-cga-v2.html">
+          <div class="c-top"><span class="c-icon">📼</span><span class="c-tag">JS · Mediabunny</span></div>
+          <h3 class="c-title">Convert to CGA — v2</h3>
+          <p class="c-desc">Faster pure-JS rewrite with video support. Feed it a clip, get retro frames back.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+
+        <a class="card" href="/vibecode-snippets/pixel-sorter.html">
+          <div class="c-top"><span class="c-icon">🌈</span><span class="c-tag">Glitch</span></div>
+          <h3 class="c-title">Pixel Sorter on Steroids</h3>
+          <p class="c-desc">Threshold-driven pixel sorting with way too many knobs. Make your photos drip.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+
+        <a class="card" href="/vibecode-snippets/glitch-lab/">
+          <div class="c-top"><span class="c-icon">⚡</span><span class="c-tag">Multi-FX</span></div>
+          <h3 class="c-title">Glitch Lab</h3>
+          <p class="c-desc">A stackable playground of databending effects. Chain them, break things, export the wreckage.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- CSS HELPERS -->
+    <section>
+      <div class="sec-head">
+        <h2><span class="num">02</span>CSS Helpers</h2>
+        <div class="rule"></div>
+      </div>
+      <div class="grid">
+        <a class="card" href="/vibecode-snippets/gradient-maskimage-compositor.html">
+          <div class="c-top"><span class="c-icon">🧪</span><span class="c-tag">CSS</span></div>
+          <h3 class="c-title">mask-image Gradient Compositor</h3>
+          <p class="c-desc">Visually layer and composite CSS <code>mask-image</code> gradients, then copy the ready-to-paste rule.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- GUITAR -->
+    <section>
+      <div class="sec-head">
+        <h2><span class="num">03</span>Guitar Learning Helpers</h2>
+        <div class="rule"></div>
+      </div>
+      <div class="grid">
+        <a class="card" href="/vibecode-snippets/chords-trainer/">
+          <div class="c-top"><span class="c-icon">🎸</span><span class="c-tag">Practice</span></div>
+          <h3 class="c-title">Chord Transition Trainer</h3>
+          <p class="c-desc">Drills the muscle memory of switching between chords. Added to and updated as I keep learning.</p>
+          <span class="c-go">Launch <span class="arrow">→</span></span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="foot">
+      <span class="meta">built in browsers, for browsers</span>
+      <span class="meta">
+        <a href="https://github.com/highda" rel="noopener">github.com/highda</a>
+      </span>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var canvas = document.getElementById('space');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var dpr, W, H, stars = [], shoot = null, nextShoot = 0;
+  var PALETTE = ['#ffffff','#cde9ff','#9fd9ff','#ff9ff0','#bfa8ff'];
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+
+  function build(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    // density scales with viewport area, 3 parallax layers
+    var count = Math.round((W * H) / 4200);
+    count = Math.max(90, Math.min(420, count));
+    stars = [];
+    for(var i=0;i<count;i++){
+      var layer = Math.random();                 // 0..1 depth
+      stars.push({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        r: rand(0.4, 1.6) * (0.6 + layer),
+        baseA: rand(0.25, 0.95),
+        tw: rand(0.6, 2.2),                       // twinkle speed
+        ph: rand(0, Math.PI*2),
+        vx: -(0.04 + layer*0.32),                 // drift left, far=slow
+        color: PALETTE[(Math.random()*PALETTE.length)|0]
+      });
+    }
+  }
+
+  function spawnShoot(){
+    var fromTop = Math.random() < 0.5;
+    shoot = {
+      x: rand(W*0.1, W*0.9),
+      y: fromTop ? rand(-40,-10) : rand(0, H*0.4),
+      vx: rand(-7,-4),
+      vy: rand(3,6),
+      life: 0,
+      max: rand(40,70),
+      len: rand(80,160)
+    };
+  }
+
+  function draw(t){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<stars.length;i++){
+      var s = stars[i];
+      if(!reduce){
+        s.x += s.vx;
+        if(s.x < -2){ s.x = W+2; s.y = Math.random()*H; }
+      }
+      var a = reduce ? s.baseA
+                     : s.baseA * (0.55 + 0.45*Math.sin(s.ph + t*0.001*s.tw));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+      // soft glow on the brighter/closer stars
+      if(s.r > 1.3){
+        ctx.globalAlpha = a*0.25;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r*2.6, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    if(!reduce){
+      if(!shoot && t > nextShoot){ spawnShoot(); }
+      if(shoot){
+        shoot.x += shoot.vx; shoot.y += shoot.vy; shoot.life++;
+        var p = shoot.life / shoot.max;
+        var fade = Math.sin(Math.min(p,1)*Math.PI); // ease in/out
+        var tx = shoot.x - shoot.vx/Math.hypot(shoot.vx,shoot.vy)*shoot.len;
+        var ty = shoot.y - shoot.vy/Math.hypot(shoot.vx,shoot.vy)*shoot.len;
+        var g = ctx.createLinearGradient(shoot.x, shoot.y, tx, ty);
+        g.addColorStop(0,'rgba(255,255,255,'+(0.9*fade)+')');
+        g.addColorStop(0.4,'rgba(85,255,255,'+(0.5*fade)+')');
+        g.addColorStop(1,'rgba(85,255,255,0)');
+        ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(shoot.x, shoot.y); ctx.lineTo(tx, ty); ctx.stroke();
+        if(shoot.life > shoot.max || shoot.x < -200 || shoot.y > H+200){
+          shoot = null; nextShoot = t + rand(3500, 9000);
+        }
+      }
+    }
+    if(!reduce) requestAnimationFrame(draw);
+  }
+
+  build();
+  nextShoot = 2000;
+  var rt; window.addEventListener('resize', function(){
+    clearTimeout(rt); rt = setTimeout(build, 150);
+  });
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
