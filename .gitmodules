@@ -1,0 +1,3 @@
+[submodule "vibecode-snippets/chords-trainer"]
+	path = vibecode-snippets/chords-trainer
+	url = https://github.com/highda/chords-trainer.git

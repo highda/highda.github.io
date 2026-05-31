@@ -1,3 +1,5 @@
 theme: jekyll-theme-minimal
 title: highda archives
 description: Free useless stuff! Just as nature intended.
+include:
+  - vibecode-snippets/chords-trainer/vendor
