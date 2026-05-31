@@ -1,3 +1,6 @@
 [submodule "vibecode-snippets/chords-trainer"]
 	path = vibecode-snippets/chords-trainer
 	url = https://github.com/highda/chords-trainer.git
+[submodule "vibecode-snippets/glitch-lab"]
+	path = vibecode-snippets/glitch-lab
+	url = https://github.com/highda/glitch-lab.git
