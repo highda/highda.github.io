@@ -1,0 +1,66 @@
+name: Sync Submodule Pointers
+
+on:
+  repository_dispatch:
+    types: [submodule-sync]
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: Source repo name (highda/chords-trainer or highda/glitch-lab)
+        required: true
+        type: choice
+        options:
+          - highda/chords-trainer
+          - highda/glitch-lab
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve source repo
+        id: source
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "repo=${{ inputs.source_repo }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "repo=${{ github.event.client_payload.source_repo }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.PAGES_SYNC_TOKEN }}
+          submodules: recursive
+
+      - name: Select submodule path
+        id: submodule
+        run: |
+          case "${{ steps.source.outputs.repo }}" in
+            "highda/chords-trainer") echo "path=vibecode-snippets/chords-trainer" >> "$GITHUB_OUTPUT" ;;
+            "highda/glitch-lab") echo "path=vibecode-snippets/glitch-lab" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "Unsupported source repo: ${{ steps.source.outputs.repo }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Sync selected submodule to latest main
+        run: |
+          git submodule sync -- "${{ steps.submodule.outputs.path }}"
+          git submodule update --init --remote -- "${{ steps.submodule.outputs.path }}"
+
+      - name: Commit and push pointer update
+        run: |
+          if git diff --quiet -- "${{ steps.submodule.outputs.path }}"; then
+            echo "No submodule pointer change."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.submodule.outputs.path }}"
+          git commit -m "Update ${{ steps.submodule.outputs.path }} submodule pointer"
+          git push origin main
