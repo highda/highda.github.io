@@ -15,3 +15,7 @@
 ### Guitar learning helpers (added/updated as I learn)
 
 [Chord transition trainer](/vibecode-snippets/chords-trainer/)
+
+### Bookmarklets
+
+[Font Ripper](/vibecode-snippets/font-ripper.html)

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Font Ripper — highda archives</title>
+<meta name="description" content="Bookmarklet that finds every font on a page — CSS, JS FontFace, type testers, not-yet-loaded styles — with previews and ZIP download.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08080f;--bg-2:#0e0e1c;--ink:#d7d7e6;--muted:#7a7a96;
+    --cyan:#55ffff;--magenta:#ff55ff;--line:rgba(85,255,255,.16);--card:rgba(255,255,255,.025);
+    --radius:14px;--mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,var(--bg),var(--bg-2));color:var(--ink);
+    font-family:var(--mono);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:clamp(40px,9vw,90px) 16px 60px}
+  .back{color:var(--muted);text-decoration:none;font-size:13px}
+  .back:hover{color:var(--cyan)}
+  h1{font-family:'VT323',var(--mono);font-weight:400;font-size:clamp(48px,11vw,96px);line-height:.95;margin:18px 0 8px;color:#fff}
+  .tagline{margin:0 0 30px;max-width:56ch}
+  .tagline em{color:var(--magenta);font-style:normal}
+  .panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:22px}
+  .install{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .bookmarklet{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border:1px solid var(--cyan);border-radius:10px;
+    color:var(--cyan);background:rgba(85,255,255,.06);text-decoration:none;font-weight:700;cursor:grab;
+    box-shadow:0 10px 40px -14px rgba(85,255,255,.5)}
+  .bookmarklet:hover{background:rgba(85,255,255,.12)}
+  .bookmarklet[aria-disabled="true"]{opacity:.35;pointer-events:none}
+  button{padding:14px 18px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--ink);font:inherit;cursor:pointer}
+  button:hover:not(:disabled){border-color:var(--magenta);color:var(--magenta)}
+  button:disabled{opacity:.35;cursor:default}
+  .status{display:block;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  h2{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--cyan);margin:40px 0 12px}
+  ol,ul{padding-left:20px;margin:0}
+  li{margin-bottom:6px}
+  li::marker{color:var(--magenta)}
+  kbd,code{font-family:var(--mono);font-size:.9em;color:#fff}
+  .muted{color:var(--muted);font-size:13.5px}
+  a{color:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← highda archives</a>
+  <h1>Font Ripper</h1>
+  <p class="tagline">A bookmarklet that finds <em>every</em> font on a page — CSS, JS <code>FontFace</code>, type testers, even styles the tester hasn't loaded yet — with live previews and one-click ZIP download.</p>
+
+  <div class="panel">
+    <div class="install">
+      <a class="bookmarklet" id="bookmarklet" href="#" aria-disabled="true">🔤 Font Ripper</a>
+      <button id="copy" disabled>Copy code</button>
+    </div>
+    <span class="status" id="status">Loading latest build…</span>
+  </div>
+
+  <h2>Install</h2>
+  <ol>
+    <li>Show the bookmarks bar (<kbd>Ctrl/⌘ + Shift + B</kbd>).</li>
+    <li>Drag the <strong>Font Ripper</strong> button onto it.</li>
+    <li>Open any page and click the bookmark.</li>
+  </ol>
+  <p class="muted">Can't drag (mobile, some browsers)? Hit “Copy code”, create a new bookmark and paste it as the URL.</p>
+
+  <h2>What it catches</h2>
+  <ul class="muted">
+    <li>CSS <code>@font-face</code> incl. <code>@import</code>, shadow DOM, same-origin iframes and CORS-blocked sheets</li>
+    <li>Fonts registered from JS via <code>FontFace</code>, matched to their files by glyph metrics + internal names</li>
+    <li>Any font file the page downloaded, even from extension-less URLs</li>
+    <li>Font files referenced in the page source that haven't been loaded yet</li>
+  </ul>
+  <p class="muted">Out of reach: cross-origin iframes (listed so you can run it there), fonts decrypted in JS, text rendered into images.</p>
+  <p class="muted">Source &amp; details: <a href="https://github.com/highda/vibecode-snippets/tree/main/bookmarklets/font-ripper">github.com/highda/vibecode-snippets</a></p>
+</div>
+<script>
+  // Always the latest build from the source repo (raw.githubusercontent.com allows CORS).
+  // Percent-encoded because browsers URL-decode javascript: bookmarks before running them.
+  (async () => {
+    const SRC = "https://raw.githubusercontent.com/highda/vibecode-snippets/main/bookmarklets/font-ripper/minified.js";
+    const link = document.getElementById("bookmarklet");
+    const copy = document.getElementById("copy");
+    const status = document.getElementById("status");
+    try {
+      const res = await fetch(SRC, { cache: "no-cache" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const code = (await res.text()).trim().replace(/^javascript:/, "");
+      const href = "javascript:" + encodeURIComponent(code);
+      link.href = href;
+      link.removeAttribute("aria-disabled");
+      link.onclick = e => { e.preventDefault(); status.textContent = "Drag the button to your bookmarks bar instead of clicking it."; };
+      copy.disabled = false;
+      copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(href); status.textContent = "Copied — paste it as a bookmark URL."; }
+        catch { status.textContent = "Clipboard blocked — drag the button instead."; }
+      };
+      status.textContent = `Ready — latest build (${Math.round(code.length / 1024)} kB).`;
+    } catch (e) {
+      status.textContent = "Couldn't load the latest build: " + e.message;
+    }
+  })();
+</script>
+</body>
+</html>
