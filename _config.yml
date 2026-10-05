@@ -1,5 +1,7 @@
-theme: jekyll-theme-minimal
-title: highda archives
-description: Free useless stuff! Just as nature intended.
+title: highda
+description: Small browser tools for images, CSS, typography and music practice.
+url: https://highda.github.io
 include:
   - vibecode-snippets/chords-trainer/vendor
+exclude:
+  - README.md

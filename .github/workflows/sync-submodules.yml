@@ -26,12 +26,21 @@ jobs:
     steps:
       - name: Resolve source repo
         id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REPO: ${{ inputs.source_repo }}
+          PAYLOAD_REPO: ${{ github.event.client_payload.source_repo }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "repo=${{ inputs.source_repo }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            repo="$INPUT_REPO"
           else
-            echo "repo=${{ github.event.client_payload.source_repo }}" >> "$GITHUB_OUTPUT"
+            repo="$PAYLOAD_REPO"
           fi
+          # Only allow known repos; rejects anything that could reach later steps.
+          case "$repo" in
+            highda/chords-trainer|highda/glitch-lab) echo "repo=$repo" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unsupported source repo: $repo"; exit 1 ;;
+          esac
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,12 +50,14 @@ jobs:
 
       - name: Select submodule path
         id: submodule
+        env:
+          REPO: ${{ steps.source.outputs.repo }}
         run: |
-          case "${{ steps.source.outputs.repo }}" in
+          case "$REPO" in
             "highda/chords-trainer") echo "path=vibecode-snippets/chords-trainer" >> "$GITHUB_OUTPUT" ;;
             "highda/glitch-lab") echo "path=vibecode-snippets/glitch-lab" >> "$GITHUB_OUTPUT" ;;
             *)
-              echo "Unsupported source repo: ${{ steps.source.outputs.repo }}"
+              echo "Unsupported source repo: $REPO"
               exit 1
               ;;
           esac
