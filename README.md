@@ -15,7 +15,7 @@ Source for [highda.github.io](https://highda.github.io) — a small collection o
 ## Structure
 
 - `index.html`, `404.html` — landing and not-found pages
-- `assets/` — shared stylesheet, theme toggle, favicon
+- `assets/` — shared stylesheet and favicon
 - `vibecode-snippets/` — standalone tools; `chords-trainer` and `glitch-lab` are git submodules
 - `svg-mapper-113/` — unlisted preview build of the SVG mapper editor
 

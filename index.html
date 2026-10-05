@@ -3,140 +3,201 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>highda — Browser tools</title>
-<meta name="description" content="A small collection of browser-based tools for image processing, CSS, typography and music practice. Everything runs locally — no uploads, no accounts.">
-<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f0f0e" media="(prefers-color-scheme: dark)">
+<title>highda. Tools you didn't ask for.</title>
+<meta name="description" content="Seven browser tools for images, CSS, fonts and guitar practice. No accounts, no uploads, no business model.">
+<meta name="theme-color" content="#ffffff">
 <link rel="canonical" href="https://highda.github.io/">
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://highda.github.io/">
-<meta property="og:title" content="highda — Browser tools">
-<meta property="og:description" content="Image processing, CSS utilities, typography and music practice. Everything runs locally in your browser.">
+<meta property="og:title" content="highda. Tools you didn't ask for.">
+<meta property="og:description" content="Seven browser tools. No accounts, no uploads, no business model.">
 <meta name="twitter:card" content="summary">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<script src="/assets/theme.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <a class="mark" href="/" aria-label="highda — home">
-      <img src="/assets/favicon.svg" width="22" height="22" alt="">highda
-    </a>
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/">highda<sup>™</sup></a>
     <nav aria-label="Primary">
-      <a href="#tools">Tools</a>
-      <a href="https://github.com/highda" rel="noopener">GitHub</a>
+      <a href="#lineup">Lineup</a>
+      <a class="hide-sm" href="#pricing">Pricing</a>
+      <a class="hide-sm" href="https://github.com/highda" rel="noopener">GitHub</a>
+      <a class="btn sm" href="#lineup">Get it free</a>
     </nav>
-  </header>
+  </div>
+</header>
 
-  <section class="hero" aria-labelledby="hero-title">
-    <p class="eyebrow rise">Browser tools &amp; experiments</p>
-    <h1 class="display rise" id="hero-title">Small tools, <em>carefully</em> made.</h1>
-    <p class="lede rise">Utilities for image processing, CSS, typography and music practice. Every tool runs entirely in your browser — files never leave your machine, and there is nothing to sign up for.</p>
+<main>
+  <section class="hero wrap" aria-labelledby="hero-title">
+    <div class="sticker" aria-hidden="true"><span>NEW!<small>still free</small></span></div>
+    <p class="kicker">Introducing the 2026 lineup</p>
+    <h1 id="hero-title">highda.</h1>
+    <p class="sub">Tools you didn't ask for. <span>Built anyway.</span></p>
+    <div class="cta">
+      <a class="btn" href="#lineup">See the lineup</a>
+      <a class="btn ghost" href="#pricing">Compare plans</a>
+    </div>
+    <p class="fine">Available now in a browser near you.<a class="fn" href="#fn1">1</a></p>
   </section>
 
-  <main id="tools">
-    <section class="group" aria-labelledby="g-image">
-      <div class="group-head">
-        <h2 id="g-image">Image</h2>
-        <p>04 tools</p>
-      </div>
-      <ul class="list">
-        <li class="item">
-          <a href="/vibecode-snippets/glitch-lab/">
-            <span class="t">Glitch Lab</span>
-            <span class="meta">Multi-effect <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">A stackable workspace of databending and distortion effects. Chain, reorder and tune them, then export the result.</p>
-          </a>
-        </li>
-        <li class="item">
-          <a href="/vibecode-snippets/pixel-sorter.html">
-            <span class="t">Pixel Sorter</span>
-            <span class="meta">Sorting <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">Threshold-driven pixel sorting with fine control over direction, intervals and sort keys.</p>
-          </a>
-        </li>
-        <li class="item">
-          <a href="/vibecode-snippets/convertto-cga-v2.html">
-            <span class="t">CGA Converter</span>
-            <span class="meta">JS · Video <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">Reduce images and video to the four-colour CGA palette. A fast, pure JavaScript pipeline built on Mediabunny.</p>
-          </a>
-        </li>
-        <li class="item">
-          <a href="/vibecode-snippets/convertto-cga.html">
-            <span class="t">CGA Converter, classic</span>
-            <span class="meta">WASM · ImageMagick <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">The original converter, running ImageMagick compiled to WebAssembly. Slower, with ImageMagick's dithering.</p>
-          </a>
-        </li>
-      </ul>
-    </section>
-
-    <section class="group" aria-labelledby="g-css">
-      <div class="group-head">
-        <h2 id="g-css">CSS</h2>
-        <p>01 tool</p>
-      </div>
-      <ul class="list">
-        <li class="item">
-          <a href="/vibecode-snippets/gradient-maskimage-compositor.html">
-            <span class="t">Mask Compositor</span>
-            <span class="meta">mask-image <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">Layer and composite <code>mask-image</code> gradients visually, then copy a ready-to-paste CSS rule.</p>
-          </a>
-        </li>
-      </ul>
-    </section>
-
-    <section class="group" aria-labelledby="g-type">
-      <div class="group-head">
-        <h2 id="g-type">Typography</h2>
-        <p>01 bookmarklet</p>
-      </div>
-      <ul class="list">
-        <li class="item">
-          <a href="/vibecode-snippets/font-ripper.html">
-            <span class="t">Font Ripper</span>
-            <span class="meta">Bookmarklet <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">Finds every font a page uses — CSS, <code>FontFace</code>, type testers, even styles not yet loaded — with previews and ZIP download.</p>
-          </a>
-        </li>
-      </ul>
-    </section>
-
-    <section class="group" aria-labelledby="g-music">
-      <div class="group-head">
-        <h2 id="g-music">Music</h2>
-        <p>01 tool</p>
-      </div>
-      <ul class="list">
-        <li class="item">
-          <a href="/vibecode-snippets/chords-trainer/">
-            <span class="t">Chord Transition Trainer</span>
-            <span class="meta">Guitar <span class="arrow" aria-hidden="true">→</span></span>
-            <p class="d">Timed drills for switching cleanly between guitar chords. Updated as my own practice evolves.</p>
-          </a>
-        </li>
-      </ul>
-    </section>
-  </main>
-
-  <footer>
-    <div class="foot">
-      <span>Built by highda. Client-side only — no tracking, no uploads.</span>
-      <span>
-        <a href="https://github.com/highda" rel="noopener">GitHub</a>
-        &nbsp;·&nbsp;
-        <button class="theme-toggle" type="button">Dark mode</button>
-      </span>
+  <div class="ticker" aria-hidden="true">
+    <div>
+      <span>No accounts</span><span>No uploads</span><span>No roadmap</span><span>No investors</span><span>No onboarding</span><span>No newsletter</span>
+      <span>No accounts</span><span>No uploads</span><span>No roadmap</span><span>No investors</span><span>No onboarding</span><span>No newsletter</span>
     </div>
-  </footer>
-</div>
+  </div>
+
+  <section class="section wrap" id="lineup" aria-labelledby="lineup-title">
+    <div class="head">
+      <h2 id="lineup-title">The lineup.</h2>
+      <p>Each one does exactly one thing. A few of them do two.</p>
+    </div>
+
+    <div class="grid">
+      <article class="tile full dark">
+        <span class="badge">Flagship</span>
+        <h3>Glitch Lab</h3>
+        <p class="tag-line">Break your images on purpose. Stack effects, reorder them, export the damage.</p>
+        <div class="links">
+          <a class="btn" href="/vibecode-snippets/glitch-lab/">Launch</a>
+          <a class="more" href="https://github.com/highda/glitch-lab" rel="noopener">Source</a>
+        </div>
+        <div class="shot" aria-hidden="true"><span class="s-glitch" data-t="ERR">ERR</span></div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">Pro-grade sorting</span>
+        <h3>Pixel Sorter</h3>
+        <p class="tag-line">Your photo, alphabetized. More knobs than strictly necessary.</p>
+        <div class="links"><a class="btn" href="/vibecode-snippets/pixel-sorter.html">Launch</a></div>
+        <div class="shot" aria-hidden="true">
+          <div class="s-sort">
+            <i style="width:92%"></i><i style="width:64%"></i><i style="width:100%"></i><i style="width:41%"></i>
+            <i style="width:78%"></i><i style="width:88%"></i><i style="width:55%"></i><i style="width:97%"></i>
+            <i style="width:70%"></i><i style="width:83%"></i>
+          </div>
+        </div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">Now with video</span>
+        <h3>CGA Converter</h3>
+        <p class="tag-line">Four colours. It turns out that's plenty.</p>
+        <div class="links"><a class="btn" href="/vibecode-snippets/convertto-cga-v2.html">Launch</a></div>
+        <div class="shot" aria-hidden="true"><div class="s-cga cga"></div></div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">Collector's edition</span>
+        <h3>CGA Converter Classic</h3>
+        <p class="tag-line">Same idea, slower engine. Runs ImageMagick in WebAssembly, for the purists.</p>
+        <div class="links"><a class="btn" href="/vibecode-snippets/convertto-cga.html">Launch</a></div>
+        <div class="shot" aria-hidden="true"><div class="s-crt"><i class="cga"></i></div></div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">For developers</span>
+        <h3>Mask Compositor</h3>
+        <p class="tag-line">Design CSS <code>mask-image</code> gradients visually. Copy. Paste. Leave early.</p>
+        <div class="links"><a class="btn" href="/vibecode-snippets/gradient-maskimage-compositor.html">Launch</a></div>
+        <div class="shot" aria-hidden="true"><div class="s-mask"></div></div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">Bookmarklet</span>
+        <h3>Font Ripper</h3>
+        <p class="tag-line">Every font on the page, in one ZIP. Even the shy ones.</p>
+        <div class="links">
+          <a class="btn" href="/vibecode-snippets/font-ripper.html">Install</a>
+          <a class="more" href="https://github.com/highda/vibecode-snippets/tree/main/bookmarklets/font-ripper" rel="noopener">Source</a>
+        </div>
+        <div class="shot" aria-hidden="true"><div class="s-font"><b>Aa</b><span>fonts.zip</span></div></div>
+      </article>
+
+      <article class="tile">
+        <span class="badge">Personal growth</span>
+        <h3>Chord Trainer</h3>
+        <p class="tag-line">Switch chords faster than you switch hobbies.</p>
+        <div class="links">
+          <a class="btn" href="/vibecode-snippets/chords-trainer/">Launch</a>
+          <a class="more" href="https://github.com/highda/chords-trainer" rel="noopener">Source</a>
+        </div>
+        <div class="shot" aria-hidden="true">
+          <div class="s-frets">
+            <i style="left:12.5%;top:24.8%"></i><i style="left:37.5%;top:58.4%"></i><i style="left:62.5%;top:75.2%"></i>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section wrap" aria-labelledby="numbers-title">
+    <div class="head"><h2 id="numbers-title">By the numbers.</h2></div>
+    <div class="stats">
+      <div class="stat"><b>0</b><span>bytes uploaded to our servers.<a class="fn" href="#fn2">2</a></span></div>
+      <div class="stat"><b>0</b><span>accounts, logins or cookie banners.</span></div>
+      <div class="stat"><b>7</b><span>tools. Eight if you count the bugs.</span></div>
+      <div class="stat"><b>100%</b><span>client-side. Your tab does all the work.</span></div>
+    </div>
+  </section>
+
+  <figure class="quote wrap">
+    <blockquote>“I don't know what it does, but it's in my bookmarks.”</blockquote>
+    <figcaption>A hypothetical user</figcaption>
+  </figure>
+
+  <section class="section wrap" id="pricing" aria-labelledby="pricing-title">
+    <div class="head">
+      <h2 id="pricing-title">Pricing.</h2>
+      <p>Pick the plan that's right for you. It's the first one.</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <h3>Free</h3>
+        <div class="price">$0</div>
+        <div class="per">per month, per year, per lifetime.<a class="fn" href="#fn3">3</a></div>
+        <ul>
+          <li>Every tool in the lineup</li>
+          <li>Every future tool, whenever</li>
+          <li>Runs offline-ish</li>
+          <li>Source code included</li>
+        </ul>
+        <a class="btn" href="#lineup">Choose Free</a>
+      </div>
+      <div class="plan off" aria-label="Pro plan, not available">
+        <h3>Pro</h3>
+        <div class="price">N/A</div>
+        <div class="per">This plan does not exist.</div>
+        <ul>
+          <li>Priority support</li>
+          <li>Team seats</li>
+          <li>An SLA</li>
+          <li>A reason to exist</li>
+        </ul>
+        <span class="btn ghost" aria-disabled="true">Sold out forever</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <ol>
+      <li id="fn1">Requires a browser. Most browsers qualify. Some tools are happier on desktop.</li>
+      <li id="fn2">There are no servers. This is a static site hosted on GitHub Pages. Your files never leave your device.</li>
+      <li id="fn3">Price subject to never changing.</li>
+    </ol>
+    <div class="bottom">
+      <span>© 2026 highda. Not a company. Never was.</span>
+      <a href="https://github.com/highda" rel="noopener">github.com/highda</a>
+    </div>
+  </div>
+</footer>
 </body>
 </html>
